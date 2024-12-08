@@ -1,9 +1,9 @@
-name: Build and Release
+name: main
 
 on:
+  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main ]
     paths-ignore:
       - '**.md'
       - '**.txt'
@@ -14,19 +14,46 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: ${{ !startsWith(github.event.head_commit.message, '[skip ci]') }}
+
     steps:
       - uses: actions/checkout@v3.3.0
         with:
           submodules: 'recursive'
           fetch-depth: 0
 
-      - name: Set up JDK 17
+      - name: set up JDK 17
         uses: actions/setup-java@v3.9.0
         with:
           java-version: '17'
           distribution: 'adopt'
+          cache: gradle
 
-      - name: Build APK with Gradle
+      - name: Cache Gradle Dependencies
+        uses: actions/cache@v3.2.4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            !~/.gradle/caches/build-cache-*
+          key: gradle-deps-core-${{ hashFiles('**/build.gradle.kts', '**/build.gradle', '**/libs.versions.toml') }}
+          restore-keys: |
+            gradle-deps
+
+      - name: Cache Gradle Build
+        uses: actions/cache@v3.2.4
+        with:
+          path: |
+            ~/.gradle/caches/build-cache-*
+            ~/.gradle/buildOutputCleanup/cache.properties
+          key: gradle-builds-core-${{ github.sha }}
+          restore-keys: |
+            gradle-builds
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build with Gradle
         run: |
           echo "${{ secrets.SIGN_KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
           ./gradlew :app:assembleRelease
@@ -44,20 +71,32 @@ jobs:
           echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
 
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        if: ${{ !github.event.pull_request }}
+        with:
+          path: './app/build/outputs/*'
+          name: build_output_${{ github.event.head_commit.id }}.zip
+
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
         with:
           tag_name: "v${{ env.VERSION_NAME }}"
           release_name: "Release v${{ env.VERSION_NAME }}"
-          body: "Release build for commit ${{ github.sha }}.\n\nAPK version code: ${{ env.VERSION_CODE }}\nAPK version name: ${{ env.VERSION_NAME }}"
+          body: |
+            Release build for commit ${{ github.sha }}.
+            APK version code: ${{ env.VERSION_CODE }}
+            APK version name: ${{ env.VERSION_NAME }}
           draft: false
           prerelease: true
         env:
-          GITHUB_TOKEN: ${{ secrets.HUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload APK to Release
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-release-asset@v1
         with:
-          path: './app/build/outputs/*'
-          name: app-release-${{ env.VERSION_NAME }}.apk
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: './app/build/outputs/apk/release/app-release.apk'
+          asset_name: app-release-${{ env.VERSION_NAME }}.apk
+          asset_content_type: application/vnd.android.package-archive
