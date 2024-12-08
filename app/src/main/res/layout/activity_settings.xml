@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+     xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:app="http://schemas.android.com/apk/res-auto"
+     android:layout_height="match_parent"
+     android:layout_width="match_parent"
+     android:orientation="vertical"
+     android:fitsSystemWindows="true">
+
+    <com.google.android.material.appbar.MaterialToolbar
+         android:layout_height="wrap_content"
+         android:layout_width="match_parent"
+         app:title="@string/settings"
+         app:titleCentered="true"
+         app:navigationIcon="@drawable/outline_arrow_back_24"
+         android:id="@+id/backButton5" />
+
+    <androidx.recyclerview.widget.RecyclerView
+         android:layout_height="match_parent"
+         android:layout_width="match_parent"
+         android:id="@+id/recycler_view" />
+
+</LinearLayout>
