@@ -106,8 +106,8 @@ public class AppConfigActivity extends AppCompatActivity {
             // 更新UI
             appNameTextView.setText(appInfo.getAppName());
             packageNameTextView.setText(appInfo.getPackageName());
-            versionTextView.setText(R.string.cs_version + versionName);
-            versionCodeTextView.setText(R.string.version_code + versionCode);
+            versionTextView.setText(getString(R.string.cs_version) + versionName);
+            versionCodeTextView.setText(getString(R.string.version_code) + versionCode);
 
             // 设置图标
             appIconImageView.setImageDrawable(icon);

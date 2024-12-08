@@ -60,7 +60,7 @@
     <string name="module_log">模块日志</string>
     <string name="settings">设置</string>
     <string name="root_warning">请授予ROOT权限</string>
-    <string name="version_code">关闭切换模式日志</string>
+    <string name="version_code">版本代号</string>
     
     <string name="enable_feas">启用Feas</string>
     <string name="disable_qcom_gpuboost">关闭高通GPUBoost</string>
