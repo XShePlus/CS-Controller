@@ -9,8 +9,6 @@ import io.github.xsheeee.cs_controller.Tools.Tools;
 
 public class LogActivity extends AppCompatActivity {
 
-    private Tools tools;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -24,7 +22,7 @@ public class LogActivity extends AppCompatActivity {
 
 
         // 初始化 Tools
-        tools = new Tools(this);
+        Tools tools = new Tools(this);
         String logData = tools.readLogFile(); // 获取日志内容
 
         TextView logTextView = findViewById(R.id.log_text_view);

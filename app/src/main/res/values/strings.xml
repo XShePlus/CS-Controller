@@ -74,7 +74,7 @@
     <string name="New_Uclamp_Strategy">使用新的uclamp策略</string>
     <string name="search_text">搜索应用名、包名</string>
     <string name="Disable_Detailed_Log">关闭切换模式日志</string>
-    
+    <string name="translation_load_error">err</string>
     
     
     

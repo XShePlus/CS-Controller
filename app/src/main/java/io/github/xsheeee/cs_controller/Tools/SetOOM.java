@@ -1,13 +1,5 @@
 package io.github.xsheeee.cs_controller.Tools;
 
-import com.topjohnwu.superuser.Shell;
-
-import java.io.BufferedWriter;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-
 public class SetOOM {
 
     private static final String LOG_TAG = "OomAdjustment";

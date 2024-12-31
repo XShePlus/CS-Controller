@@ -4,13 +4,13 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.materialswitch.MaterialSwitch;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,11 +22,20 @@ public class SwitchAdapter extends RecyclerView.Adapter<SwitchAdapter.SwitchView
     private final String configFilePath;
     private final Tools tools;
 
+    // 翻译映射
+    private Map<String, String> keyDisplayMap = new HashMap<>();
+
     public SwitchAdapter(Context context, List<String> keys, Map<String, Boolean> configMap, String configFilePath) {
         this.keys = keys;
         this.configMap = configMap;
         this.configFilePath = configFilePath;
         this.tools = new Tools(context);
+    }
+
+    // 提供翻译映射的 setter
+    public void setKeyDisplayMap(Map<String, String> keyDisplayMap) {
+        this.keyDisplayMap = keyDisplayMap;
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -40,7 +49,9 @@ public class SwitchAdapter extends RecyclerView.Adapter<SwitchAdapter.SwitchView
     @Override
     public void onBindViewHolder(@NonNull SwitchViewHolder holder, int position) {
         String key = keys.get(position);
-        holder.materialSwitch.setText(key);
+        String displayName = keyDisplayMap.getOrDefault(key, key);
+
+        holder.materialSwitch.setText(displayName);
 
         Boolean isChecked = configMap.get(key);
         if (isChecked != null) {
@@ -52,8 +63,9 @@ public class SwitchAdapter extends RecyclerView.Adapter<SwitchAdapter.SwitchView
             holder.materialSwitch.setAlpha(0.5f);
         }
 
-        holder.materialSwitch.setOnCheckedChangeListener((buttonView, checked) -> {
-            String newValue = checked ? "true" : "false";
+        holder.materialSwitch.setOnCheckedChangeListener((buttonView, isCheckedState) -> {
+            configMap.put(key, isCheckedState);
+            String newValue = isCheckedState ? "true" : "false";
             tools.updateConfigEntry(configFilePath, key, newValue);
         });
     }

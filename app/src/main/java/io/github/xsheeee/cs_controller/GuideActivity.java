@@ -2,6 +2,7 @@ package io.github.xsheeee.cs_controller;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -12,8 +13,8 @@ import io.github.xsheeee.cs_controller.Tools.Tools;
 import io.github.xsheeee.cs_controller.Tools.Values;
 
 public class GuideActivity extends AppCompatActivity {
-    private static final String FILE_PATH = "/storage/emulated/0/Android/CSController/infoSt.txt";
 
+    @SuppressLint("CommitPrefEdits")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -35,7 +36,7 @@ public class GuideActivity extends AppCompatActivity {
 
 
         boolean isFirstRun = sharedPreferences.getBoolean("isFirstRun", false);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
+        sharedPreferences.edit();
         Values.isFirst = !isFirstRun;
 
         if (!isFirstRun) {

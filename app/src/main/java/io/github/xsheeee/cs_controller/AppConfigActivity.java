@@ -1,6 +1,8 @@
 package io.github.xsheeee.cs_controller;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
@@ -18,7 +20,6 @@ import io.github.xsheeee.cs_controller.Tools.AppInfo;
 import io.github.xsheeee.cs_controller.Tools.Values;
 
 public class AppConfigActivity extends AppCompatActivity {
-    private ArrayAdapter<CharSequence> adapter;
     private Spinner spinner;
     private TextView appNameTextView, packageNameTextView, versionTextView, versionCodeTextView;
     private ImageView appIconImageView;
@@ -34,12 +35,7 @@ public class AppConfigActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         toolbar.setNavigationIcon(R.drawable.outline_arrow_back_24);
-        toolbar.setNavigationOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
-        });
+        toolbar.setNavigationOnClickListener(v -> finish());
 
         // 初始化视图
         appNameTextView = findViewById(R.id.appNameTextView);
@@ -59,7 +55,7 @@ public class AppConfigActivity extends AppCompatActivity {
 
         // 设置spinner（选择框）
         spinner = findViewById(R.id.spinner);
-        adapter = ArrayAdapter.createFromResource(
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
                 this,
                 R.array.modes,
                 android.R.layout.simple_spinner_item
@@ -87,6 +83,7 @@ public class AppConfigActivity extends AppCompatActivity {
     }
 
     // 获取应用信息
+    @SuppressLint("SetTextI18n")
     private void fetchAppInfo(String packageName) {
         PackageManager pm = getPackageManager();
 

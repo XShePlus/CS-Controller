@@ -1,7 +1,6 @@
 package io.github.xsheeee.cs_controller;
 
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.util.TypedValue;
 import android.widget.ArrayAdapter;
@@ -91,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
         String fileContent = tools.readFileWithShell(Values.CSConfigPath);
         if (fileContent != null) {
             String modeString = getString(R.string.now_mode);
-            configTextView.setText(modeString + fileContent);
+            configTextView.setText(String.format("%s%s", modeString, fileContent));
         } else {
             configTextView.setText(R.string.read_mode_error);
         }
@@ -101,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
         String version = tools.getVersionFromModuleProp();
         if (version != null) {
             String versionString = getString(R.string.cs_version);
-            versionTextView.setText(versionString + version);
+            versionTextView.setText(String.format("%s%s", versionString, version));
         } else {
             versionTextView.setText(R.string.read_version_error);
         }
@@ -110,9 +109,9 @@ public class MainActivity extends AppCompatActivity {
     private void updateProcessStatusTextView() {
         String statusPrefix = getString(R.string.cs_work);
         if (tools.isProcessRunning(Values.csProcess)) {
-            processStatusTextView.setText(statusPrefix + getString(R.string.cs_work_true));
+            processStatusTextView.setText(String.format("%s%s", statusPrefix, getString(R.string.cs_work_true)));
         } else {
-            processStatusTextView.setText(statusPrefix + getString(R.string.cs_work_false));
+            processStatusTextView.setText(String.format("%s%s", statusPrefix, getString(R.string.cs_work_false)));
             TypedValue typedValue = new TypedValue();
             getTheme().resolveAttribute(R.attr.colorErrorContainer, typedValue, true);
             int color = typedValue.data;

@@ -1,5 +1,6 @@
 package io.github.xsheeee.cs_controller;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.net.Uri;
@@ -64,10 +65,11 @@ public class AboutActivity extends AppCompatActivity {
 
     private String getClickableTextForIndex(int index) {
         switch (index) {
-            case 0: return "GitHub";
-            case 1: return "GitHub";
-            case 2: return "GitHub";
-            case 3: return "GitHub";
+            case 0:
+            case 3:
+            case 1:
+            case 2:
+                return "GitHub";
             default: return null;
         }
     }
@@ -90,7 +92,7 @@ public class AboutActivity extends AppCompatActivity {
         if (start >= 0) {
             ClickableSpan clickableSpan = new ClickableSpan() {
                 @Override
-                public void onClick(View widget) {
+                public void onClick(@NonNull View widget) {
                     Intent intent = new Intent(Intent.ACTION_VIEW);
                     intent.setData(Uri.parse(url));
                     startActivity(intent);

@@ -1,13 +1,21 @@
 package io.github.xsheeee.cs_controller;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -19,8 +27,25 @@ import io.github.xsheeee.cs_controller.Tools.Values;
 public class SettingsActivity extends AppCompatActivity {
     private Tools tools;
     private static final String CONFIG_FILE_PATH = Values.csSettings;
-    private List<String> switchKeys = new ArrayList<>();
+
+    private final List<String> switchKeys = new ArrayList<>();
     private Map<String, Boolean> configMap = new HashMap<>();
+    private final Map<String, String> keyTranslations = new HashMap<>();
+    private final Map<String, String> keyDisplayMap = new HashMap<>();
+
+    private SwitchAdapter adapter;
+
+    private final ActivityResultLauncher<Intent> filePickerLauncher = registerForActivityResult(
+        new ActivityResultContracts.StartActivityForResult(),
+        result -> {
+            if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                Uri uri = result.getData().getData();
+                if (uri != null) {
+                    importTranslationFile(uri);
+                }
+            }
+        }
+    );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,48 +60,50 @@ public class SettingsActivity extends AppCompatActivity {
         tools = new Tools(this);
 
         initSwitchKeys();
-        addMissingKeysFromConfig(); // 动态添加配置文件中缺失的键值
+        addMissingKeysFromConfig();
         loadConfig();
 
-        reorderKeys();
-
+        // 初始化 adapter
         RecyclerView recyclerView = findViewById(R.id.recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        SwitchAdapter adapter = new SwitchAdapter(this, switchKeys, configMap, CONFIG_FILE_PATH);
+        adapter = new SwitchAdapter(this, switchKeys, configMap, CONFIG_FILE_PATH);
         recyclerView.setAdapter(adapter);
 
-        removeLeadingSpacesInFile();
+        loadTranslationsFromPreferences();
+        reorderKeys();
+    }
+
+    // 加载菜单
+    @Override
+    public boolean onCreateOptionsMenu(android.view.Menu menu) {
+        getMenuInflater().inflate(R.menu.settings_topbar, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(android.view.MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.import_translation) {
+            openFilePicker();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     private void initSwitchKeys() {
-        // 添加默认的配置键
-        switchKeys.add("Enable_Feas");
-        switchKeys.add("Disable_qcom_GpuBoost");
-        switchKeys.add("Core_allocation");
-        switchKeys.add("Load_balancing");
-        switchKeys.add("Disable_UFS_clock_gate");
-        switchKeys.add("TouchBoost");
-        switchKeys.add("CFS_Scheduler");
-        switchKeys.add("Dynamic_Response");
-        switchKeys.add("Adj_CpuIdle");
-        switchKeys.add("New_Uclamp_Strategy");
-        switchKeys.add("Disable_Detailed_Log");
+        switchKeys.clear();
     }
 
     private void addMissingKeysFromConfig() {
-        // 读取配置文件内容
         String configContent = tools.readFileWithShell(CONFIG_FILE_PATH);
         if (configContent != null) {
             String[] lines = configContent.split("\n");
             for (String line : lines) {
                 line = line.trim();
-                // 忽略以 "name =" 或 "author =" 开头的行
-                if (line.startsWith("name =") || line.startsWith("author =")) {
-                    continue;
-                }
                 if (line.contains("=")) {
                     String key = line.split("=")[0].trim();
-                    if (!switchKeys.contains(key)) {
+                    // 忽略包含 "name" 和 "author" 的行
+                    if (!key.toLowerCase().contains("name") && !key.toLowerCase().contains("author") && !switchKeys.contains(key)) {
                         switchKeys.add(key);
                     }
                 }
@@ -100,9 +127,6 @@ public class SettingsActivity extends AppCompatActivity {
         String[] lines = content.split("\n");
         for (String line : lines) {
             line = line.trim();
-            if (line.startsWith("name =") || line.startsWith("author =")) {
-                continue;
-            }
             if (line.contains("=")) {
                 String[] parts = line.split("=");
                 String key = parts[0].trim();
@@ -113,38 +137,87 @@ public class SettingsActivity extends AppCompatActivity {
         return configMap;
     }
 
+    private void openFilePicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("text/plain");
+        filePickerLauncher.launch(intent);
+    }
+
+    private void importTranslationFile(Uri uri) {
+        try {
+            InputStream inputStream = getContentResolver().openInputStream(uri);
+            if (inputStream != null) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    line = line.trim();
+                    if (line.contains("=")) {
+                        String[] parts = line.split("=", 2);
+                        String key = parts[0].trim();
+                        String value = parts[1].trim();
+                        keyTranslations.put(key, value);
+                    }
+                }
+                inputStream.close();
+                saveTranslationsToPreferences();
+                applyTranslations();
+                showToast("翻译文件导入成功！");
+            }
+        } catch (Exception e) {
+            showToast("翻译文件导入失败：" + e.getMessage());
+        }
+    }
+
+    private void applyTranslations() {
+        for (String key : switchKeys) {
+            if (keyTranslations.containsKey(key)) {
+                keyDisplayMap.put(key, keyTranslations.get(key)); // 原始键 -> 翻译名称
+            } else {
+                keyDisplayMap.put(key, key);
+            }
+        }
+        if (adapter != null) {
+            adapter.setKeyDisplayMap(keyDisplayMap);
+            adapter.notifyDataSetChanged();
+        }
+    }
+
+    private void loadTranslationsFromPreferences() {
+        SharedPreferences sharedPreferences = getSharedPreferences("Translations", MODE_PRIVATE);
+        for (String key : switchKeys) {
+            String translation = sharedPreferences.getString(key, null);
+            if (translation != null) {
+                keyTranslations.put(key, translation);
+            }
+        }
+        applyTranslations();
+    }
+
+    private void saveTranslationsToPreferences() {
+        SharedPreferences sharedPreferences = getSharedPreferences("Translations", MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        for (Map.Entry<String, String> entry : keyTranslations.entrySet()) {
+            editor.putString(entry.getKey(), entry.getValue());
+        }
+        editor.apply();
+    }
+
     private void reorderKeys() {
         List<String> validKeys = new ArrayList<>();
         List<String> invalidKeys = new ArrayList<>();
 
         for (String key : switchKeys) {
             if (configMap.containsKey(key)) {
-                validKeys.add(key); // 有效
+                validKeys.add(key);
             } else {
-                invalidKeys.add(key); // 无效
+                invalidKeys.add(key);
             }
         }
 
         switchKeys.clear();
         switchKeys.addAll(validKeys);
-        switchKeys.addAll(invalidKeys); // 无效选项追加到末尾
-    }
-
-    private void removeLeadingSpacesInFile() {
-        String configContent = tools.readFileWithShell(CONFIG_FILE_PATH);
-        if (configContent != null) {
-            StringBuilder cleanedContent = new StringBuilder();
-            String[] lines = configContent.split("\n");
-
-            for (String line : lines) {
-                String cleanedLine = line.replaceAll("^\\s+", "");
-                cleanedContent.append(cleanedLine).append("\n");
-            }
-
-            tools.writeToFile(CONFIG_FILE_PATH, cleanedContent.toString());
-        } else {
-            showToast(getString(R.string.read_mode_error));
-        }
+        switchKeys.addAll(invalidKeys);
     }
 
     private void showToast(String message) {

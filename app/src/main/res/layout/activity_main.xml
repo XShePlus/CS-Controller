@@ -143,10 +143,10 @@
              android:id="@+id/menu">
 
             <AutoCompleteTextView
-                 android:layout_height="wrap_content"
-                 android:layout_width="match_parent"
-                 android:inputType="none"
-                 app:simpleItems="@array/select_mode" />
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="none"
+                app:simpleItems="@array/select_mode" />
 
         </com.google.android.material.textfield.TextInputLayout>
 

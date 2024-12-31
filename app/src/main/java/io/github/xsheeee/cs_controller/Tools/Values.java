@@ -1,7 +1,5 @@
 package io.github.xsheeee.cs_controller.Tools;
 
-import android.annotation.SuppressLint;
-
 import com.topjohnwu.superuser.Shell;
 
 import java.util.ArrayList;

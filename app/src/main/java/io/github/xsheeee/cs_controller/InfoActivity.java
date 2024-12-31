@@ -4,7 +4,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Button;
 import io.github.xsheeee.cs_controller.Tools.Tools;
 
@@ -35,27 +34,21 @@ public class InfoActivity extends AppCompatActivity {
         Tools tools = new Tools(getApplicationContext());
 
         // 设置接受按钮的点击事件
-        acceptButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // 用户接受，保存状态并打开主Activity
-                SharedPreferences.Editor editor = preferences.edit();
-                editor.putBoolean("hasAccepted", true);
-                editor.apply();
-                
-                Intent intent = new Intent(InfoActivity.this, MainActivity.class);
-                startActivity(intent);
-                finish();
-            }
+        acceptButton.setOnClickListener(v -> {
+            // 用户接受，保存状态并打开主Activity
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putBoolean("hasAccepted", true);
+            editor.apply();
+
+            Intent intent = new Intent(InfoActivity.this, MainActivity.class);
+            startActivity(intent);
+            finish();
         });
 
         // 设置拒绝按钮的点击事件
-        refuseButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tools.showErrorToast("不同意将退出应用");
-                finish();
-            }
+        refuseButton.setOnClickListener(v -> {
+            tools.showErrorToast("不同意将退出应用");
+            finish();
         });
     }
 }

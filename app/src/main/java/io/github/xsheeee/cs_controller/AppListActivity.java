@@ -6,6 +6,8 @@ import androidx.appcompat.widget.SearchView;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -25,6 +27,7 @@ import androidx.appcompat.widget.Toolbar;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -33,8 +36,8 @@ import io.github.xsheeee.cs_controller.Tools.AppInfo;
 
 public class AppListActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
-    private List<AppInfo> data = new ArrayList<>();
-    private List<AppInfo> filteredData = new ArrayList<>();
+    private final List<AppInfo> data = new ArrayList<>();
+    private final List<AppInfo> filteredData = new ArrayList<>();
     private FrameLayout loadingView;
     private PackageManager packageManager;
     private AppListAdapter adapter;
@@ -77,7 +80,7 @@ public class AppListActivity extends AppCompatActivity {
         MenuItem searchItem = menu.findItem(R.id.action_search);
         SearchView searchView = (SearchView) searchItem.getActionView();
 
-        searchView.setQueryHint(getString(R.string.search_text));
+        Objects.requireNonNull(searchView).setQueryHint(getString(R.string.search_text));
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
@@ -122,6 +125,7 @@ public class AppListActivity extends AppCompatActivity {
         });
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     private void updateAppData(List<AppInfo> loadedData) {
         data.clear();
         data.addAll(loadedData);
@@ -195,6 +199,7 @@ public class AppListActivity extends AppCompatActivity {
     }
 
     class AppListAdapter extends RecyclerView.Adapter<AppListAdapter.ViewHolder> {
+        @NonNull
         @Override
         public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
             View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.app_info_layout, parent, false);

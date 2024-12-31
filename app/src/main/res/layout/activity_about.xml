@@ -1,31 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<androidx.coordinatorlayout.widget.CoordinatorLayout
      xmlns:android="http://schemas.android.com/apk/res/android"
      xmlns:app="http://schemas.android.com/apk/res-auto"
      xmlns:tools="http://schemas.android.com/tools"
      android:layout_height="match_parent"
      android:layout_width="match_parent"
-     android:orientation="vertical"
-     android:fitsSystemWindows="true"
      tools:context=".AboutActivity">
 
-    <com.google.android.material.appbar.MaterialToolbar
+    <com.google.android.material.appbar.AppBarLayout
          android:layout_height="wrap_content"
          android:layout_width="match_parent"
-         app:title="@string/about_and_support"
-         app:titleCentered="true"
-         app:navigationIcon="@drawable/outline_arrow_back_24"
-         android:id="@+id/backButton3" />
+         android:fitsSystemWindows="true">
+
+        <com.google.android.material.appbar.MaterialToolbar
+             android:layout_height="wrap_content"
+             android:layout_width="match_parent"
+             app:title="@string/about_and_support"
+             app:titleCentered="true"
+             app:navigationIcon="@drawable/outline_arrow_back_24"
+             android:id="@+id/backButton3" />
+
+    </com.google.android.material.appbar.AppBarLayout>
 
     <ScrollView
          android:layout_height="match_parent"
-         android:layout_width="match_parent">
+         android:layout_width="match_parent"
+         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
              android:layout_height="wrap_content"
              android:layout_width="match_parent"
              android:gravity="center"
-             android:layout_margin="16dp"
+             android:padding="16dp"
              android:orientation="vertical"
              android:clipChildren="false"
              android:clipToPadding="false">
@@ -55,8 +61,8 @@
                         <ImageView
                              android:layout_height="match_parent"
                              android:layout_width="match_parent"
-                             android:src="@drawable/logo"
                              android:scaleType="centerCrop"
+                             android:src="@drawable/logo"
                              android:id="@+id/main_logo" />
 
                     </com.google.android.material.card.MaterialCardView>
@@ -179,4 +185,4 @@
 
     </ScrollView>
 
-</LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
