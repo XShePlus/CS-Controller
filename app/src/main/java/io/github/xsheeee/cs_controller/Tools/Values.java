@@ -15,10 +15,12 @@ public class Values {
     public static final String pePath = "/sdcard/Android/CSController/performance.txt";
     public static final String faPath = "/sdcard/Android/CSController/fast.txt";
     public static final String spPath = "/sdcard/Android/CSController/super_powersave.txt";
-    public static final String csmodulePath = "/data/adb/modules/MW_CpuSpeedController/module.prop";
-    public static final String csProcess = "/data/adb/modules/MW_CpuSpeedController/system/bin/MW_CpuSpeedController";
+    public static final String csmodulePath = "/data/adb/modules/MW_CpuTurboScheduler/module.prop";
+    public static final String csProcess = "/data/adb/modules/MW_CpuTurboScheduler/MW_CpuSpeedController";
     public static final String csLog = "/storage/emulated/0/Android/MW_CpuSpeedController/log.txt";
-    public static final String csSettings = "/storage/emulated/0/Android/MW_CpuSpeedController/config.ini";
+    public static final String csSettingsPath = "/storage/emulated/0/Android/MW_CpuSpeedController/config.ini";
+    public static final String appConfig = "/storage/emulated/0/Android/CSController/app_config.json";
+    public static final String CsServicePath ="/data/adb/modules/MW_CpuTurboScheduler/service.sh";
     public static final String balanceName = "balance";
     public static final String powersaveName = "powersave";
     public static final String performanceName = "performance";

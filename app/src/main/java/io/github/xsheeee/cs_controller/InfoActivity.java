@@ -6,7 +6,7 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Button;
 import io.github.xsheeee.cs_controller.Tools.Tools;
-
+import io.github.xsheeee.cs_controller.Tools.Logger;
 public class InfoActivity extends AppCompatActivity {
 
     @Override
@@ -30,7 +30,6 @@ public class InfoActivity extends AppCompatActivity {
         Button refuseButton = findViewById(R.id.info_refuse);
         Button acceptButton = findViewById(R.id.info_accept);
 
-        // 工具对象
         Tools tools = new Tools(getApplicationContext());
 
         // 设置接受按钮的点击事件
@@ -47,7 +46,7 @@ public class InfoActivity extends AppCompatActivity {
 
         // 设置拒绝按钮的点击事件
         refuseButton.setOnClickListener(v -> {
-            tools.showErrorToast("不同意将退出应用");
+            Logger.showToast(InfoActivity.this,"不同意将退出应用");
             finish();
         });
     }

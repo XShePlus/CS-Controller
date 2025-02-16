@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView
      xmlns:android="http://schemas.android.com/apk/res/android"
-     xmlns:card_view="http://schemas.android.com/apk/res-auto"
+     xmlns:app="http://schemas.android.com/apk/res-auto"
      android:layout_height="wrap_content"
      android:layout_width="match_parent"
      android:layout_marginBottom="8dp"
      android:layout_marginEnd="8dp"
-     card_view:cardElevation="0dp"
-     card_view:strokeWidth="0dp"
+     app:cardElevation="0dp"
+     app:strokeWidth="0dp"
      style="@style/Widget.Material3.CardView.Elevated"
      android:layout_marginStart="8dp">
 
@@ -25,26 +25,35 @@
 
         <LinearLayout
              android:layout_height="match_parent"
-             android:layout_width="wrap_content"
+             android:layout_width="0dp"
              android:orientation="vertical"
              android:layout_marginStart="12dp"
+             android:layout_weight="1"
              android:layout_gravity="center_vertical">
 
             <TextView
                  android:layout_height="wrap_content"
                  android:layout_width="wrap_content"
                  android:textSize="19sp"
-                 android:id="@+id/app_name"
-                 android:text="AppName" />
+                 android:id="@+id/app_name" />
 
             <TextView
                  android:layout_height="wrap_content"
                  android:layout_width="wrap_content"
                  android:textSize="12sp"
-                 android:id="@+id/pck_name"
-                 android:text="package_name" />
+                 android:id="@+id/pck_name" />
 
         </LinearLayout>
+
+        <TextView
+             android:layout_height="wrap_content"
+             android:layout_width="wrap_content"
+             android:visibility="gone"
+             android:padding="4dp"
+             android:textColor="?attr/colorPrimary"
+             android:id="@+id/performance_mode"
+             android:layout_gravity="center_vertical"
+             android:textStyle="bold" />
 
     </LinearLayout>
 

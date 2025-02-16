@@ -46,7 +46,9 @@
     <string name="now_mode">模式：</string>
     <string name="cs_work_true">工作中</string>
     <string name="cs_work_false">未运行</string>
-    <string name="read_mode_error">无法读取配置文件</string>
+    
+    <!-- 删除了重复的定义，只保留一项 -->
+    <string name="read_mode_error">读取配置时发生错误</string>
     <string name="read_version_error">"无法读取版本信息"</string>
 
     <string name="view_source_code">在 GitHub 查看源码</string>
@@ -75,15 +77,8 @@
     <string name="search_text">搜索应用名、包名</string>
     <string name="Disable_Detailed_Log">关闭切换模式日志</string>
     <string name="translation_load_error">err</string>
-    
-    
-    
-    
-    <string-array name="modes">
-        <item>powersave</item>
-        <item>balance</item>
-        <item>performance</item>
-        <item>fast</item>
-        <item>super_powersave</item>
-    </string-array>
+    <string name="accessibility_service_label">前台应用监控</string>
+    <string name="accessibility_service_description">监控前台应用变化并显示包名</string>
+
+    <string name="save_mode_error">保存配置时发生错误</string>
 </resources>

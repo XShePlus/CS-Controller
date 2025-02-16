@@ -2,5 +2,6 @@
     <declare-styleable name="Nya">
         <attr name="colorErrorContainer" format="color" />
         <attr name="clearIcon" format="reference" />
+        <attr name="colorSecondaryContainer" format="color" />
     </declare-styleable>
 </resources>

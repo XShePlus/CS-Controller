@@ -3,7 +3,7 @@
 
     <item
         android:id="@+id/import_translation"
-        android:title="upload"
+        android:title="加载翻译"
         android:icon="@drawable/upload_file_24px"
         app:showAsAction="always" />
 

@@ -2,6 +2,7 @@
 <LinearLayout
      xmlns:android="http://schemas.android.com/apk/res/android"
      xmlns:app="http://schemas.android.com/apk/res-auto"
+     xmlns:tools="http://schemas.android.com/tools"
      android:layout_height="match_parent"
      android:layout_width="match_parent"
      android:orientation="vertical"
@@ -15,11 +16,52 @@
          app:navigationIcon="@drawable/outline_arrow_back_24"
          android:id="@+id/backButton5" />
 
-
-
-    <androidx.recyclerview.widget.RecyclerView
-         android:layout_height="match_parent"
+    <androidx.core.widget.NestedScrollView
+         android:layout_height="wrap_content"
          android:layout_width="match_parent"
-         android:id="@+id/recycler_view" />
+         android:fitsSystemWindows="true">
+
+        <LinearLayout
+             android:layout_height="wrap_content"
+             android:layout_width="match_parent"
+             android:orientation="vertical">
+
+            <TextView
+                 android:layout_height="wrap_content"
+                 android:layout_width="match_parent"
+                 android:layout_marginStart="16dp"
+                 android:text="App" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                 android:layout_height="wrap_content"
+                 android:layout_width="match_parent"
+                 android:padding="16dp"
+                 android:id="@+id/switchAccessibility"
+                 android:foreground="?attr/selectableItemBackground"
+                 android:text="后台服务（无障碍）" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                 android:layout_height="wrap_content"
+                 android:layout_width="match_parent"
+                 android:padding="16dp"
+                 android:id="@+id/switchFloatingWindow"
+                 android:foreground="?attr/selectableItemBackground"
+                 android:text="调试悬浮窗" />
+
+            <TextView
+                 android:layout_height="wrap_content"
+                 android:layout_width="match_parent"
+                 android:layout_marginStart="16dp"
+                 android:text="Module" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                 android:layout_height="match_parent"
+                 android:layout_width="match_parent"
+                 android:nestedScrollingEnabled="false"
+                 android:id="@+id/recycler_view" />
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
 
 </LinearLayout>

@@ -13,12 +13,13 @@
          android:layout_height="?attr/actionBarSize"
          android:layout_width="match_parent"
          app:subtitleTextColor="?attr/colorSecondary"
-         app:title="@string/app_list_title"
          android:elevation="4dp"
+         app:title="@string/app_list_title"
          app:titleCentered="true"
          app:navigationIcon="@drawable/outline_arrow_back_24"
          app:subtitleCentered="true"
-         android:id="@+id/backButton2" />
+         android:id="@+id/backButton2"
+         app:subtitle="" />
 
     <com.google.android.material.card.MaterialCardView
          android:layout_height="wrap_content"
@@ -35,22 +36,18 @@
             <LinearLayout
                  android:layout_height="wrap_content"
                  android:layout_width="match_parent"
-                 android:gravity="start"
-                 app:cardElevation="4dp"
-                 app:cardCornerRadius="16dp">
+                 android:gravity="start">
 
                 <ImageView
                      android:layout_height="64dp"
                      android:layout_width="64dp"
-                     android:contentDescription="App Icon"
                      android:id="@+id/iconImageView" />
 
                 <androidx.constraintlayout.widget.ConstraintLayout
                      android:layout_height="match_parent"
                      android:layout_width="match_parent"
-                     app:cardElevation="4dp"
-                     android:paddingStart="16dp"
-                     app:cardCornerRadius="16dp">
+                     android:paddingEnd="16dp"
+                     android:paddingStart="16dp">
 
                     <TextView
                          android:layout_height="wrap_content"
@@ -94,42 +91,36 @@
          android:layout_height="wrap_content"
          android:layout_width="match_parent"
          android:layout_margin="16dp"
-         app:cardElevation="0dp"
-        
          style="@style/Widget.Material3.CardView.Elevated">
 
         <LinearLayout
              android:layout_height="wrap_content"
              android:layout_width="match_parent"
              android:background="?attr/colorSecondaryContainer"
+             android:gravity="center_vertical"
              android:padding="16dp"
-             android:orientation="vertical">
+             android:orientation="horizontal">
 
-            <LinearLayout
+            <TextView
                  android:layout_height="wrap_content"
-                 android:layout_width="match_parent"
-                 android:gravity="center"
-                 android:orientation="horizontal">
+                 android:layout_width="0dp"
+                 android:gravity="start"
+                 android:textSize="16sp"
+                 android:textColor="?attr/colorOnSecondaryContainer"
+                 android:layout_weight="1"
+                 android:text="@string/select_mode" />
 
-                <TextView
-                     android:layout_height="wrap_content"
-                     android:layout_width="0dp"
-                     android:textSize="32sp"
-                     android:textColor="?attr/colorOnSecondaryContainer"
-                     android:layout_weight="1"
-                     android:text="@string/select_mode" />
-
-                <Spinner
-                     android:layout_height="wrap_content"
-                     android:layout_width="0dp"
-                     android:contentDescription="Mode selector"
-                     android:importantForAccessibility="yes"
-                     android:layout_weight="1"
-                     android:id="@+id/spinner">
-
-                </Spinner>
-
-            </LinearLayout>
+            <com.google.android.material.button.MaterialButton
+                 android:layout_height="wrap_content"
+                 android:layout_width="wrap_content"
+                 app:icon="@drawable/ic_arrow_drop_down"
+                 app:strokeColor="?attr/colorOnSecondaryContainer"
+                 app:iconTint="?attr/colorOnSecondaryContainer"
+                 android:textColor="?attr/colorOnSecondaryContainer"
+                 style="@style/Widget.Material3.Button.OutlinedButton"
+                 android:layout_marginStart="8dp"
+                 android:id="@+id/dropdownButton"
+                 app:iconGravity="end" />
 
         </LinearLayout>
 
