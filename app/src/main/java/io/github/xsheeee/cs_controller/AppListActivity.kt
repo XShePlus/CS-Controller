@@ -217,7 +217,7 @@ class AppListActivity : AppCompatActivity() {
             ) { app1: AppInfo, app2: AppInfo ->
                 if (app1.isPriority && !app2.isPriority) return@sort -1
                 if (!app1.isPriority && app2.isPriority) return@sort 1
-                app1.appName.compareTo(app2.appName)
+                app2.appName?.let { app1.appName!!.compareTo(it) }!!
             }
             runOnUiThread {
                 updateAppData(loadedData)
@@ -307,7 +307,7 @@ class AppListActivity : AppCompatActivity() {
                 iconCache!!.remove(appInfo.packageName)
             }
 
-            val icon = packageManager!!.getApplicationIcon(appInfo.packageName)
+            val icon = appInfo.packageName?.let { packageManager!!.getApplicationIcon(it) }
             appInfo.icon = icon
             iconCache!!.put(appInfo.packageName, WeakReference(icon))
             notifyItemChanged(appInfo)
@@ -380,8 +380,8 @@ class AppListActivity : AppCompatActivity() {
         else
             data.parallelStream()
                 .filter { appInfo: AppInfo ->
-                    appInfo.appName.lowercase(Locale.getDefault()).contains(lowerCaseText) ||
-                            appInfo.packageName.lowercase(Locale.getDefault())
+                    appInfo.appName?.lowercase(Locale.getDefault())!!.contains(lowerCaseText) ||
+                            appInfo.packageName!!.lowercase(Locale.getDefault())
                                 .contains(lowerCaseText)
                 }
                 .collect(Collectors.toList())
@@ -452,7 +452,7 @@ class AppListActivity : AppCompatActivity() {
                 ) { app1: AppInfo, app2: AppInfo ->
                     if (app1.isPriority && !app2.isPriority) return@sort -1
                     if (!app1.isPriority && app2.isPriority) return@sort 1
-                    app1.appName.compareTo(app2.appName)
+                    app2.appName?.let { app1.appName!!.compareTo(it) }!!
                 }
 
                 runOnUiThread {
@@ -549,7 +549,7 @@ class AppListActivity : AppCompatActivity() {
                 packageNameView.text = boundPackageName
 
                 val performanceMode = appInfo.performanceMode
-                if (!performanceMode.isEmpty()) {
+                if (!performanceMode?.isEmpty()!!) {
                     performanceModeView.visibility = View.VISIBLE
                     performanceModeView.text = performanceMode
                 } else {

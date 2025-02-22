@@ -224,7 +224,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateVersionTextView() {
-        tools.getVersionFromModuleProp()?.let { version ->
+        tools.versionFromModuleProp?.let { version ->
             val versionString = getString(R.string.cs_version)
             versionTextView.text = "$versionString$version"
         } ?: run {
@@ -279,7 +279,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkRootStatus() {
-        rootWarningCard.visibility = if (tools.getSU()) {
+        rootWarningCard.visibility = if (tools.sU) {
             MaterialCardView.GONE
         } else {
             MaterialCardView.VISIBLE

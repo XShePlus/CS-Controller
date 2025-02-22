@@ -17,7 +17,7 @@ class SwitchAdapter(
     private val configFilePath: String
 ) :
     RecyclerView.Adapter<SwitchViewHolder>() {
-    private val tools = Tools(context)
+    private val tools = context?.let { Tools(it) }
 
     // 翻译映射
     private var keyDisplayMap: Map<String, String> = HashMap()
@@ -54,7 +54,7 @@ class SwitchAdapter(
             configMap[key] =
                 isCheckedState
             val newValue = if (isCheckedState) "true" else "false"
-            tools.updateConfigEntry(configFilePath, key, newValue)
+            tools?.updateConfigEntry(configFilePath, key, newValue)
         }
     }
 
