@@ -48,7 +48,7 @@ class Tools(private val context: Context) {
     }
 
     val sU: Boolean
-        get() = executeShellCommand("su -c id")
+        get() = executeShellCommand("su")
 
     fun changeMode(modeName: String?) {
         if (modeName == null || modeName.isEmpty()) {
