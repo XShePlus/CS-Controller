@@ -62,7 +62,7 @@ public class AppInfo {
 
     @Override
     public String toString() {
-        return "AppInfo [icon=" + icon + ", appName=" + appName + ", packageName=" + packageName 
+        return "AppInfo [icon=" + icon + ", appName=" + appName + ", packageName=" + packageName
                 + ", performanceMode=" + performanceMode + ", isPriority=" + isPriority + "]";
     }
 }
