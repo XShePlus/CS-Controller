@@ -36,7 +36,7 @@ import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : BaseActivity() {
     private lateinit var tools: Tools
     private lateinit var configTextView: TextView
     private lateinit var menu: AutoCompleteTextView
@@ -346,7 +346,7 @@ class MainActivity : AppCompatActivity() {
         android.os.Process.killProcess(android.os.Process.myPid())
     }
 
-    private fun logError(message: String) {
-        Logger.writeLog("ERROR", TAG, message)
-    }
+//    private fun logError(message: String) {
+//        Logger.writeLog("ERROR", TAG, message)
+//    }
 }
