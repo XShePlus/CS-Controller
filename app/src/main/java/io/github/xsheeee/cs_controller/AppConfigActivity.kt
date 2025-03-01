@@ -23,7 +23,7 @@ import java.io.FileReader
 import java.io.FileWriter
 import java.io.IOException
 
-class AppConfigActivity : AppCompatActivity() {
+class AppConfigActivity : BaseActivity() {
     private var appNameTextView: TextView? = null
     private var packageNameTextView: TextView? = null
     private var versionTextView: TextView? = null

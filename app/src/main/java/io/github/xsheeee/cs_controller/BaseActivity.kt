@@ -8,8 +8,8 @@ open class BaseActivity : AppCompatActivity(){
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
     }
-    fun logError(message: String){
+    fun log(message: String,level: String){
         val TAG = javaClass.simpleName
-        Logger.writeLog(TAG,"ERROR",message)
+        Logger.writeLog(TAG,level,message)
     }
 }

@@ -1,6 +1,5 @@
 package io.github.xsheeee.cs_controller.Tools
 
-import com.topjohnwu.superuser.Shell
 import java.util.Arrays
 
 object Values {
@@ -56,37 +55,4 @@ object Values {
         spList
     )
 
-    fun updateLists() {
-        for (i in filePaths.indices) {
-            val result = Shell.cmd("su -c cat " + filePaths[i]).exec()
-            if (result.isSuccess) {
-                // 清除旧的数据
-
-                lists[i].clear()
-
-                // 添加每一行到列表中
-                for (line in result.out) {
-                    if (!line.trim { it <= ' ' }.isEmpty()) { // 跳过空行
-                        lists[i].add(line.trim { it <= ' ' })
-                    }
-                }
-            }
-        }
-    }
-
-    fun toUpdateLists() {
-        for (i in lists.indices) { // 使用 '<' 而不是 '<='
-            val dataBuilder = StringBuilder() // 使用 StringBuilder 提高效率
-
-            for (p in lists[i]) {
-                if (dataBuilder.length > 0) {
-                    dataBuilder.append('\n') // 使用正确的换行符
-                }
-                dataBuilder.append(p)
-            }
-
-            val data = dataBuilder.toString()
-            Shell.cmd("echo \"" + data + "\" > " + filePaths[i]).exec() // 使用双引号包围 data
-        }
-    }
 }

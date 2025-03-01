@@ -15,7 +15,7 @@ import java.io.IOException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-class LogActivity : AppCompatActivity() {
+class LogActivity : BaseActivity() {
     private var logTextView: TextView? = null
     private var scrollView: NestedScrollView? = null // 用来滚动的容器
     private var executorService: ExecutorService? = null

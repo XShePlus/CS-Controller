@@ -15,6 +15,7 @@ import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.materialswitch.MaterialSwitch
+import io.github.xsheeee.cs_controller.Adapter.SwitchAdapter
 import io.github.xsheeee.cs_controller.Tools.Logger
 import io.github.xsheeee.cs_controller.Tools.Values
 import org.json.JSONObject
@@ -28,7 +29,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.Locale
 
-class SettingsActivity : AppCompatActivity() {
+class SettingsActivity : BaseActivity() {
     private val switchKeys: MutableList<String> = ArrayList()
     private val configMap: MutableMap<String, Boolean> = HashMap()
     private val keyTranslations: MutableMap<String, String> = HashMap()

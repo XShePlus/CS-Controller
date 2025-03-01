@@ -32,13 +32,14 @@ android {
         jvmTarget = '1.8'
     }
 }
-android.applicationVariants.all {
+android.applicationVariants.configureEach {
     variant ->
-        variant.outputs.all {
+        variant.outputs.configureEach {
             if (variant.buildType.name =='release')
                 outputFileName = "CS-Controller_v${versionName}.apk"
         }
 }
+
 dependencies {
     implementation 'androidx.core:core-ktx:1.15.0'
     def libsuVersion = '6.0.0'
@@ -50,7 +51,7 @@ dependencies {
 
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
 

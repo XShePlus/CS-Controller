@@ -20,7 +20,6 @@ import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -48,10 +47,9 @@ class MainActivity : BaseActivity() {
 
     private var shouldKillMainProcess = false
 
+
     companion object {
-        private const val TAG = "MainActivity"
         private const val REQUEST_STORAGE_PERMISSION = 100
-        private const val REQUEST_MANAGE_EXTERNAL_STORAGE = 1
         private val CONFIG_FILE_PATH = Values.appConfig
     }
 
@@ -126,7 +124,7 @@ class MainActivity : BaseActivity() {
                 try {
                     ProcessBuilder("su", "-c", "sh", Values.CsServicePath).start().waitFor()
                 } catch (e: Exception) {
-                    logError(e.message ?: "Unknown error")
+                    log(e.message ?: "Unknown error","E")
                 }
             }.start()
             updateConfigTextView()
@@ -164,7 +162,7 @@ class MainActivity : BaseActivity() {
                     }
                     updateConfigTextView()
                 } catch (e: Exception) {
-                    logError(e.message ?: "Unknown error")
+                    log(e.message ?: "Unknown error","E")
                     configTextView.setText("ERROR")
                 }
             } ?: createDefaultConfigFile()
@@ -189,7 +187,7 @@ class MainActivity : BaseActivity() {
                 writer.write(jsonObject.toString(2))
             }
         } catch (e: Exception) {
-            logError(e.message ?: "Unknown error")
+            log(e.message ?: "Unknown error","E")
             configTextView.setText("ERROR")
         }
     }

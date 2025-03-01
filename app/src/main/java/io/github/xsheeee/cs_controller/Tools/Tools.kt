@@ -4,47 +4,10 @@ import android.content.Context
 import com.topjohnwu.superuser.Shell
 import io.github.xsheeee.cs_controller.Tools.Logger.showToast
 import io.github.xsheeee.cs_controller.Tools.Logger.writeLog
-import java.util.Arrays
 
 class Tools(private val context: Context) {
     fun getModeName(mode: Int): String? {
         return MODE_MAP[mode]
-    }
-
-    fun init() {
-        val paths = Arrays.asList(CS_CONFIG_PATH, Values.CSCPath)
-        ensureDirectoriesAndFilesExist(paths)
-
-        if (!checkDirectoryAndFileWithLibSu()) {
-            createPathWithLibSu(LOG_PATH, true)
-        }
-    }
-
-    private fun ensureDirectoriesAndFilesExist(paths: List<String>) {
-        for (path in paths) {
-            if (!executeShellCommand("test -e $path")) {
-                handlePathError(path)
-            }
-        }
-    }
-
-    private fun handlePathError(path: String) {
-        if (CS_CONFIG_PATH == path) {
-            showToast("未安装 CS 调度")
-        } else {
-            createPathWithLibSu(path, Values.CSCPath == path)
-        }
-    }
-
-    private fun createPathWithLibSu(path: String, isDirectory: Boolean) {
-        val command = if (isDirectory) "su -c mkdir -p " else "su -c touch "
-        if (!executeShellCommand(command + path)) {
-            showToast("创建路径失败：$path")
-        }
-    }
-
-    private fun checkDirectoryAndFileWithLibSu(): Boolean {
-        return executeShellCommand("ls " + LOG_PATH)
     }
 
     val sU: Boolean
@@ -125,10 +88,6 @@ class Tools(private val context: Context) {
         return result.isSuccess && !result.out.isEmpty()
     }
 
-    fun readLogFile(): String? {
-        return readFileWithShell(LOG_PATH)
-    }
-
     fun executeShellCommand(command: String): Boolean {
         val result = Shell.cmd(command).exec()
         if (!result.isSuccess) {
@@ -146,7 +105,6 @@ class Tools(private val context: Context) {
     }
 
     companion object {
-        private const val LOG_PATH = Values.csLog
         private val MODE_MAP: MutableMap<Int, String> = HashMap()
         private const val TAG = "Tools"
         private const val CS_CONFIG_PATH = Values.CSConfigPath

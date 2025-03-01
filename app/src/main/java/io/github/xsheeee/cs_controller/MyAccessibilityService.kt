@@ -68,7 +68,7 @@ class MyAccessibilityService : AccessibilityService() {
         try {
             initializeService()
         } catch (e: Exception) {
-            logError("Service initialization failed: " + e.message)
+            logError("Service initialization failed: " + e.message,"E")
             // 延迟3秒后重试初始化
             if (handler != null) {
                 handler!!.postDelayed({ this.initializeService() }, 3000)
@@ -100,7 +100,7 @@ class MyAccessibilityService : AccessibilityService() {
             isServiceInitialized = true
             Log.d(TAG, "Service initialized successfully")
         } catch (e: Exception) {
-            logError("Failed to initialize service: " + e.message)
+            logError("Failed to initialize service: " + e.message,"E")
             handler!!.postDelayed({ this.initializeService() }, 3000)
         }
     }
@@ -117,7 +117,7 @@ class MyAccessibilityService : AccessibilityService() {
                 )
             }
         } catch (e: Exception) {
-            logError("Error creating directories: " + e.message)
+            logError("Error creating directories: " + e.message,"E")
             throw e
         }
     }
@@ -132,7 +132,7 @@ class MyAccessibilityService : AccessibilityService() {
                 removeFloatingWindow()
             }
         } catch (e: Exception) {
-            logError("Error updating floating window state: " + e.message)
+            logError("Error updating floating window state: " + e.message,"E")
         }
     }
 
@@ -159,7 +159,7 @@ class MyAccessibilityService : AccessibilityService() {
 
             windowManager!!.addView(floatingView, params)
         } catch (e: Exception) {
-            logError("Error creating floating window: " + e.message)
+            logError("Error creating floating window: " + e.message,"E")
             floatingView = null
         }
     }
@@ -169,7 +169,7 @@ class MyAccessibilityService : AccessibilityService() {
             try {
                 windowManager!!.removeView(floatingView)
             } catch (e: Exception) {
-                logError("Error removing floating window: " + e.message)
+                logError("Error removing floating window: " + e.message,"E")
             } finally {
                 floatingView = null
             }
@@ -203,7 +203,7 @@ class MyAccessibilityService : AccessibilityService() {
                                 try {
                                     loadAppConfig()
                                 } catch (e: Exception) {
-                                    logError("Failed to reload config: " + e.message)
+                                    logError("Failed to reload config: " + e.message,"E")
                                 }
                             }
                         }
@@ -214,7 +214,7 @@ class MyAccessibilityService : AccessibilityService() {
                 (configObserver as FileObserver).startWatching()
                 Log.d(TAG, "File observer started successfully")
             } catch (e: Exception) {
-                logError("Failed to start file observer: " + e.message)
+                logError("Failed to start file observer: " + e.message,"E")
                 handler!!.postDelayed({ this.setupConfigObserver() }, 5000)
             }
         }
@@ -243,7 +243,7 @@ class MyAccessibilityService : AccessibilityService() {
                     )
                 }
             } catch (e: IOException) {
-                logError("Error updating CS config: " + e.message)
+                logError("Error updating CS config: " + e.message,"E")
             }
         }
     }
@@ -271,7 +271,7 @@ class MyAccessibilityService : AccessibilityService() {
                 }
             }
         } catch (e: Exception) {
-            logError("Error checking desktop app: " + e.message)
+            logError("Error checking desktop app: " + e.message,"E")
         }
 
         return false
@@ -288,7 +288,7 @@ class MyAccessibilityService : AccessibilityService() {
             serviceInfo = info
             Log.d(TAG, "Service connected successfully")
         } catch (e: Exception) {
-            logError("Error in onServiceConnected: " + e.message)
+            logError("Error in onServiceConnected: " + e.message,"E")
         }
     }
 
@@ -313,7 +313,7 @@ class MyAccessibilityService : AccessibilityService() {
                 }
             }
         } catch (e: Exception) {
-            logError("Error processing accessibility event: " + e.message)
+            logError("Error processing accessibility event: " + e.message,"E")
         }
     }
 
@@ -342,7 +342,7 @@ class MyAccessibilityService : AccessibilityService() {
                 mode
             )
         } catch (e: Exception) {
-            logError("Error generating debug info: " + e.message)
+            logError("Error generating debug info: " + e.message,"E")
             return "-1"
         }
     }
@@ -363,7 +363,7 @@ class MyAccessibilityService : AccessibilityService() {
                         textView.text = debugInfo
                     }
                 } catch (e: Exception) {
-                    logError("Error updating floating window text: " + e.message)
+                    logError("Error updating floating window text: " + e.message,"E")
                 }
             }
         }
@@ -388,7 +388,7 @@ class MyAccessibilityService : AccessibilityService() {
 
             startForeground(NOTIFICATION_ID, notification)
         } catch (e: Exception) {
-            logError("Error showing notification: " + e.message)
+            logError("Error showing notification: " + e.message,"E")
         }
     }
 
@@ -405,7 +405,7 @@ class MyAccessibilityService : AccessibilityService() {
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     startActivity(intent)
                 } catch (e: Exception) {
-                    logError("Error requesting overlay permission: " + e.message)
+                    logError("Error requesting overlay permission: " + e.message,"E")
                 }
             }
         }
@@ -431,7 +431,7 @@ class MyAccessibilityService : AccessibilityService() {
             restartServiceIntent.setPackage(packageName)
             startService(restartServiceIntent)
         } catch (e: Exception) {
-            logError("Error restarting service: " + e.message)
+            logError("Error restarting service: " + e.message,"E")
         }
     }
 
@@ -451,7 +451,7 @@ class MyAccessibilityService : AccessibilityService() {
             restartServiceIntent.setPackage(packageName)
             startService(restartServiceIntent)
         } catch (e: Exception) {
-            logError("Failed to restart service: " + e.message)
+            logError("Failed to restart service: " + e.message,"E")
         }
 
         super.onDestroy()
@@ -479,7 +479,7 @@ class MyAccessibilityService : AccessibilityService() {
 
             Log.d(TAG, "Service cleanup completed")
         } catch (e: Exception) {
-            logError("Error during cleanup: " + e.message)
+            logError("Error during cleanup: " + e.message,"E")
         }
     }
 
@@ -495,7 +495,7 @@ class MyAccessibilityService : AccessibilityService() {
                     return size.x
                 }
             } catch (e: Exception) {
-                logError("Error getting screen width: " + e.message)
+                logError("Error getting screen width: " + e.message,"E")
                 return -1
             }
         }
@@ -512,13 +512,13 @@ class MyAccessibilityService : AccessibilityService() {
                     return size.y
                 }
             } catch (e: Exception) {
-                logError("Error getting screen height: " + e.message)
+                logError("Error getting screen height: " + e.message,"E")
                 return -2
             }
         }
 
-    private fun logError(message: String) {
-        Logger.writeLog("ERROR", TAG, message)
+    private fun logError(message: String,level: String) {
+        Logger.writeLog(TAG,level,message)
     }
 
     companion object {

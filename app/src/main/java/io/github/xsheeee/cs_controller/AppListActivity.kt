@@ -1,5 +1,6 @@
 package io.github.xsheeee.cs_controller
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -23,7 +24,6 @@ import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import io.github.xsheeee.cs_controller.AppConfigActivity
 import io.github.xsheeee.cs_controller.Tools.AppInfo
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -39,11 +39,10 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.stream.Collectors
-import kotlin.concurrent.Volatile
 import kotlin.math.max
 import kotlin.math.min
 
-class AppListActivity : AppCompatActivity() {
+class AppListActivity : BaseActivity() {
     private var recyclerView: RecyclerView? = null
     private val data: MutableList<AppInfo> = Collections.synchronizedList(ArrayList())
     private val filteredData: MutableList<AppInfo> = Collections.synchronizedList(ArrayList())
@@ -53,11 +52,12 @@ class AppListActivity : AppCompatActivity() {
     private var executorService: ExecutorService? = null
     private var iconCache: LruCache<String?, WeakReference<Drawable?>?>? = null
     private val performanceModes: MutableMap<String, String> =
-        Collections.synchronizedMap(HashMap())
+    Collections.synchronizedMap(HashMap())
     private var configFileObserver: FileObserver? = null
 
     @Volatile
-    private var isLoading = false
+    var isLoading = false
+    private set
 
     private var searchRunnable: Runnable? = null
     private val searchHandler = Handler(Looper.getMainLooper())
@@ -73,6 +73,7 @@ class AppListActivity : AppCompatActivity() {
         loadAppInfos()
     }
 
+    @SuppressLint("SuspiciousIndentation")
     private fun initializeViews() {
         recyclerView = findViewById(R.id.recycler_view)
         loadingView = findViewById(R.id.loading_view)
@@ -80,34 +81,34 @@ class AppListActivity : AppCompatActivity() {
 
         // 优化线程池配置
         val executor = ThreadPoolExecutor(
-            LOADING_POOL_SIZE,
-            LOADING_POOL_SIZE * 2,
-            30L, TimeUnit.SECONDS,
-            LinkedBlockingQueue(40),
-            ThreadPoolExecutor.CallerRunsPolicy()
+                LOADING_POOL_SIZE,
+                LOADING_POOL_SIZE * 2,
+                30L, TimeUnit.SECONDS,
+                LinkedBlockingQueue(40),
+                ThreadPoolExecutor.CallerRunsPolicy()
         )
         executor.allowCoreThreadTimeOut(true)
         executorService = executor
 
         val toolbar = findViewById<Toolbar>(R.id.backButton)
-        setSupportActionBar(toolbar)
+                setSupportActionBar(toolbar)
         toolbar.setNavigationOnClickListener { v: View? -> finish() }
     }
 
     private fun initializeCache() {
         iconCache = object : LruCache<String?, WeakReference<Drawable?>?>(
-            ICON_CACHE_SIZE
-        ) {
-            override fun sizeOf(key: String?, value: WeakReference<Drawable?>?): Int {
-                return 1 // 简化大小计算
-            }
+                ICON_CACHE_SIZE
+                ) {
+                override fun sizeOf(key: String?, value: WeakReference<Drawable?>?): Int {
+            return 1 // 简化大小计算
+        }
         }
 
         // 预加载系统应用图标
         executorService!!.execute {
             try {
                 val apps =
-                    packageManager!!.getInstalledApplications(0)
+                        packageManager!!.getInstalledApplications(0)
                 for (app in apps) {
                     if ((app.flags and ApplicationInfo.FLAG_SYSTEM) != 0) {
                         val icon = app.loadIcon(packageManager)
@@ -125,17 +126,18 @@ class AppListActivity : AppCompatActivity() {
         val configFile = File(configDir)
 
         configFileObserver = object : FileObserver(
-            configFile,
-            MODIFY or CLOSE_WRITE
+                configFile,
+                MODIFY or CLOSE_WRITE
         ) {
+            @SuppressLint("SuspiciousIndentation")
             override fun onEvent(event: Int, path: String?) {
                 if (path == null) return
 
-                val fileName = CONFIG_FILE_PATH.substring(CONFIG_FILE_PATH.lastIndexOf('/') + 1)
+                        val fileName = CONFIG_FILE_PATH.substring(CONFIG_FILE_PATH.lastIndexOf('/') + 1)
                 if (path != fileName) return
 
                 if ((event and MODIFY) != 0 ||
-                    (event and CLOSE_WRITE) != 0
+                        (event and CLOSE_WRITE) != 0
                 ) {
                     runOnUiThread {
                         performanceModes.clear()
@@ -155,7 +157,12 @@ class AppListActivity : AppCompatActivity() {
         recyclerView!!.setLayerType(View.LAYER_TYPE_HARDWARE, null)
         recyclerView!!.itemAnimator = null
 
-        adapter = AppListAdapter()
+        adapter = AppListAdapter(
+                this,
+                filteredData,
+                executorService
+        ) { appInfo -> loadIconForAppInfo(appInfo) }
+
         recyclerView!!.adapter = adapter
 
         recyclerView!!.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -174,9 +181,9 @@ class AppListActivity : AppCompatActivity() {
 
         try {
             BufferedReader(
-                InputStreamReader(FileInputStream(configFile))
+                    InputStreamReader(FileInputStream(configFile))
             ).use { reader ->
-                val sb = StringBuilder(1024)
+                    val sb = StringBuilder(1024)
                 val buffer = CharArray(1024)
                 var read: Int
 
@@ -204,16 +211,16 @@ class AppListActivity : AppCompatActivity() {
 
     private fun loadAppInfos() {
         if (isLoading) return
-        isLoading = true
+                isLoading = true
         loadingView!!.visibility = View.VISIBLE
 
         executorService!!.execute {
             readConfigFile()
             val loadedData =
-                allAppInfos
+                    allAppInfos
 
             Collections.sort(
-                loadedData
+                    loadedData
             ) { app1: AppInfo, app2: AppInfo ->
                 if (app1.isPriority && !app2.isPriority) return@sort -1
                 if (!app1.isPriority && app2.isPriority) return@sort 1
@@ -228,39 +235,39 @@ class AppListActivity : AppCompatActivity() {
     }
 
     protected val allAppInfos: List<AppInfo>
-        get() {
-            val resolveInfos =
+    get() {
+        val resolveInfos =
                 packageManager!!.queryIntentActivities(
-                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER),
-                    PackageManager.MATCH_ALL
-                )
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER),
+                PackageManager.MATCH_ALL
+        )
 
-            return resolveInfos.parallelStream()
+        return resolveInfos.parallelStream()
                 .map { ri: ResolveInfo ->
-                    val packageName = ri.activityInfo.packageName
-                    val appName = ri.loadLabel(packageManager!!).toString()
-                    val appInfo =
-                        AppInfo(null, appName, packageName)
+                val packageName = ri.activityInfo.packageName
+            val appName = ri.loadLabel(packageManager!!).toString()
+            val appInfo =
+                    AppInfo(null, appName, packageName)
 
-                    if (performanceModes.containsKey(packageName)) {
-                        appInfo.performanceMode = performanceModes[packageName]
-                        appInfo.isPriority = true
-                    }
-                    appInfo
-                }
-                .collect(
-                    Collectors.toList()
-                )
+            if (performanceModes.containsKey(packageName)) {
+                appInfo.performanceMode = performanceModes[packageName]
+                appInfo.isPriority = true
+            }
+            appInfo
         }
+                .collect(
+                Collectors.toList()
+        )
+    }
 
     private fun loadVisibleIcons() {
         val layoutManager = recyclerView!!.layoutManager as LinearLayoutManager? ?: return
 
-        val firstVisible =
-            max(0.0, layoutManager.findFirstVisibleItemPosition().toDouble()).toInt()
+                val firstVisible =
+                max(0.0, layoutManager.findFirstVisibleItemPosition().toDouble()).toInt()
         val lastVisible = min(
-            layoutManager.findLastVisibleItemPosition().toDouble(),
-            (filteredData.size - 1).toDouble()
+                layoutManager.findLastVisibleItemPosition().toDouble(),
+                (filteredData.size - 1).toDouble()
         ).toInt()
 
         // 使用批量加载
@@ -274,8 +281,8 @@ class AppListActivity : AppCompatActivity() {
 
         // 预加载
         val endPosition = min(
-            (lastVisible + PRELOAD_AHEAD_ITEMS).toDouble(),
-            filteredData.size.toDouble()
+                (lastVisible + PRELOAD_AHEAD_ITEMS).toDouble(),
+                filteredData.size.toDouble()
         ).toInt()
         for (i in lastVisible + 1 until endPosition) {
             val appInfo = filteredData[i]
@@ -294,7 +301,11 @@ class AppListActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadIconForAppInfo(appInfo: AppInfo) {
+    private fun isIconLoading(appInfo: AppInfo): Boolean {
+        return appInfo.icon != null || executorService!!.isShutdown
+    }
+
+    fun loadIconForAppInfo(appInfo: AppInfo) {
         try {
             val cachedIconRef = iconCache!![appInfo.packageName]
             if (cachedIconRef != null) {
@@ -316,13 +327,9 @@ class AppListActivity : AppCompatActivity() {
         }
     }
 
-    private fun isIconLoading(appInfo: AppInfo): Boolean {
-        return appInfo.icon != null || executorService!!.isShutdown
-    }
-
     private fun updateAppData(loadedData: List<AppInfo>) {
         val diffResult = DiffUtil.calculateDiff(
-            DiffCallback(data, loadedData), true
+                DiffCallback(data, loadedData), true
         )
 
         data.clear()
@@ -354,7 +361,7 @@ class AppListActivity : AppCompatActivity() {
         val searchView = searchItem.actionView as SearchView?
 
         Objects.requireNonNull(searchView)?.queryHint =
-            getString(R.string.search_text)
+                getString(R.string.search_text)
         searchView!!.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String): Boolean {
                 return false
@@ -374,20 +381,20 @@ class AppListActivity : AppCompatActivity() {
     private fun filter(text: String) {
         if (isLoading) return
 
-        val lowerCaseText = text.lowercase(Locale.getDefault())
+                val lowerCaseText = text.lowercase(Locale.getDefault())
         val newFilteredData = if (text.isEmpty())
             ArrayList(data)
         else
             data.parallelStream()
-                .filter { appInfo: AppInfo ->
-                    appInfo.appName?.lowercase(Locale.getDefault())!!.contains(lowerCaseText) ||
-                            appInfo.packageName!!.lowercase(Locale.getDefault())
-                                .contains(lowerCaseText)
-                }
+                    .filter { appInfo: AppInfo ->
+                appInfo.appName?.lowercase(Locale.getDefault())!!.contains(lowerCaseText) ||
+                appInfo.packageName!!.lowercase(Locale.getDefault())
+                .contains(lowerCaseText)
+        }
                 .collect(Collectors.toList())
 
         val diffResult = DiffUtil.calculateDiff(
-            DiffCallback(filteredData, newFilteredData), true
+                DiffCallback(filteredData, newFilteredData), true
         )
 
         filteredData.clear()
@@ -432,10 +439,11 @@ class AppListActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("SuspiciousIndentation")
     private fun refreshPerformanceModes() {
         if (isLoading) return
 
-        executorService!!.execute {
+                executorService!!.execute {
             readConfigFile()
             var needsSort = false
             for (appInfo in data) {
@@ -448,7 +456,7 @@ class AppListActivity : AppCompatActivity() {
             }
             if (needsSort) {
                 Collections.sort(
-                    data
+                        data
                 ) { app1: AppInfo, app2: AppInfo ->
                     if (app1.isPriority && !app2.isPriority) return@sort -1
                     if (!app1.isPriority && app2.isPriority) return@sort 1
@@ -465,10 +473,10 @@ class AppListActivity : AppCompatActivity() {
     }
 
     internal class DiffCallback(
-        private val oldList: List<AppInfo>,
-        private val newList: List<AppInfo>
+            private val oldList: List<AppInfo>,
+            private val newList: List<AppInfo>
     ) :
-        DiffUtil.Callback() {
+    DiffUtil.Callback() {
         override fun getOldListSize(): Int {
             return oldList.size
         }
@@ -498,83 +506,9 @@ class AppListActivity : AppCompatActivity() {
         }
     }
 
-    internal inner class AppListAdapter : RecyclerView.Adapter<AppListAdapter.ViewHolder>() {
-        init {
-            setHasStableIds(true)
-        }
-
-        override fun getItemId(position: Int): Long {
-            return filteredData[position].packageName.hashCode().toLong()
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.app_info_layout, parent, false)
-            return ViewHolder(view)
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val appInfo = filteredData[position]
-            holder.bind(appInfo)
-
-            if (appInfo.icon == null && !isIconLoading(appInfo)) {
-                holder.imageView.setImageDrawable(null)
-                loadIconForAppInfo(appInfo)
-            }
-        }
-
-        override fun getItemCount(): Int {
-            return filteredData.size
-        }
-
-        internal inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-            val imageView: ImageView =
-                itemView.findViewById(R.id.app_icon)
-            private val textView: TextView = itemView.findViewById(R.id.app_name)
-            private val packageNameView: TextView = itemView.findViewById(R.id.pck_name)
-            private val performanceModeView: TextView =
-                itemView.findViewById(R.id.performance_mode)
-            private var boundPackageName: String? = null
-
-            fun bind(appInfo: AppInfo) {
-                boundPackageName = appInfo.packageName
-
-                if (appInfo.icon != null) {
-                    imageView.setImageDrawable(appInfo.icon)
-                } else {
-                    imageView.setImageDrawable(null)
-                }
-
-                textView.text = appInfo.appName
-                packageNameView.text = boundPackageName
-
-                val performanceMode = appInfo.performanceMode
-                if (!performanceMode?.isEmpty()!!) {
-                    performanceModeView.visibility = View.VISIBLE
-                    performanceModeView.text = performanceMode
-                } else {
-                    performanceModeView.visibility = View.GONE
-                }
-
-                itemView.setOnClickListener { v: View? ->
-                    if (!isLoading) {
-                        val intent = Intent(
-                            this@AppListActivity,
-                            AppConfigActivity::class.java
-                        )
-                        intent.putExtra("aName", appInfo.appName)
-                        intent.putExtra("pName", boundPackageName)
-                        startActivity(intent)
-                    }
-                }
-            }
-        }
-
-    }
-
     companion object {
         private const val CONFIG_FILE_PATH =
-            "/storage/emulated/0/Android/CSController/app_config.json"
+                "/storage/emulated/0/Android/CSController/app_config.json"
         private const val PRELOAD_AHEAD_ITEMS = 20
         private const val ICON_CACHE_SIZE = 200
         private const val SEARCH_DEBOUNCE_TIME_MS: Long = 300

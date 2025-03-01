@@ -2,13 +2,11 @@ package io.github.xsheeee.cs_controller
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
 import android.widget.Button
-import androidx.appcompat.app.AppCompatActivity
 import io.github.xsheeee.cs_controller.Tools.Logger
 import io.github.xsheeee.cs_controller.Tools.Tools
 
-class InfoActivity : AppCompatActivity() {
+class InfoActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -30,10 +28,10 @@ class InfoActivity : AppCompatActivity() {
         val refuseButton = findViewById<Button>(R.id.info_refuse)
         val acceptButton = findViewById<Button>(R.id.info_accept)
 
-        val tools = Tools(applicationContext)
+        Tools(applicationContext)
 
         // 设置接受按钮的点击事件
-        acceptButton.setOnClickListener { v: View? ->
+        acceptButton.setOnClickListener {
             // 用户接受，保存状态并打开主Activity
             val editor = preferences.edit()
             editor.putBoolean("hasAccepted", true)
@@ -45,7 +43,7 @@ class InfoActivity : AppCompatActivity() {
         }
 
         // 设置拒绝按钮的点击事件
-        refuseButton.setOnClickListener { v: View? ->
+        refuseButton.setOnClickListener {
             Logger.showToast(
                 this@InfoActivity,
                 "不同意将退出应用"
