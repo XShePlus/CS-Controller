@@ -1,7 +1,6 @@
-name: main
+name: Release
 
 on:
-  workflow_dispatch:
   push:
     branches: [ main ]
     paths-ignore:
@@ -15,7 +14,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     if: ${{ !startsWith(github.event.head_commit.message, '[skip ci]') }}
-
     steps:
       - uses: actions/checkout@v3
         with:
@@ -73,18 +71,39 @@ jobs:
           KEY_ALIAS: ${{ secrets.SIGN_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.SIGN_KEY_PASSWORD }}
 
-      - name: Upload Build Log
-        uses: actions/upload-artifact@v4
-        with:
-          name: build.log
-          path: build.log
-          if-no-files-found: error
-          retention-days: 7
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: release.apk
-          path: ./app/build/outputs/apk/release/*.apk
-          if-no-files-found: error
-          retention-days: 7
+          tag_name: v1.0.${{ github.run_number }}
+          release_name: Release v1.0.${{ github.run_number }}
+          draft: false
+          prerelease: false
+
+      - name: Upload APK to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./app/build/outputs/apk/release/*.apk
+          asset_name: apk_release_${{ github.sha }}.apk
+          asset_content_type: application/vnd.android.package-archive
+
+      - name: Upload Build Log to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: build.log
+          asset_name: build_log_${{ github.sha }}.log
+          asset_content_type: text/plain
