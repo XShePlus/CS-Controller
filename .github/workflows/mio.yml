@@ -73,10 +73,14 @@ jobs:
           KEY_ALIAS: ${{ secrets.SIGN_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.SIGN_KEY_PASSWORD }}
 
-      - name: Upload Artifacts
+      - name: Upload Build Log
         uses: actions/upload-artifact@v4
         with:
-          path: |
-            build.log
-            ./app/build/outputs/apk/release/*.apk
-          name: build_output_${{ github.event.head_commit.id }}
+          name: build_log_${{ github.event.head_commit.id }}
+          path: build.log
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk_release_${{ github.event.head_commit.id }}
+          path: ./app/build/outputs/apk/release/*.apk
