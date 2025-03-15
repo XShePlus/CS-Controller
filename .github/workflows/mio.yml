@@ -62,3 +62,10 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.SIGN_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.SIGN_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.SIGN_KEY_PASSWORD }}
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        if: ${{ !github.event.pull_request }}
+        with:
+          name: app-release.apk
+          path: './app/build/outputs/apk/release/app-release.apk'
