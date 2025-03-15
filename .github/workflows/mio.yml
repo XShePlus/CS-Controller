@@ -80,7 +80,6 @@ jobs:
             exit 1
           fi
           echo "✅ APK file found: $apk_file"
-          # 同时写入环境变量和输出变量（build job 的输出可以用于调试，但文件本身无法跨 job 传递）
           echo "apk_path=$apk_file" >> $GITHUB_ENV
           echo "::set-output name=apk_path::$apk_file"
 
@@ -90,7 +89,7 @@ jobs:
           name: apk_file
           path: ${{ env.apk_path }}
 
-      - name: Upload Build Log
+      - name: Upload Build Log Artifact
         uses: actions/upload-artifact@v4
         with:
           name: build_log_${{ github.sha }}
@@ -114,7 +113,7 @@ jobs:
           prerelease: false
 
       - name: Download APK Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v2
         with:
           name: apk_file
           path: apk_artifact
@@ -122,7 +121,6 @@ jobs:
       - name: Locate APK file
         id: locate_apk
         run: |
-          # 在下载目录下查找 APK 文件（假设只有一个 APK 文件）
           apk_file=$(find apk_artifact -type f -name '*.apk' | head -n 1)
           if [ -z "$apk_file" ]; then
             echo "❌ No APK file found in artifact!"
@@ -142,7 +140,7 @@ jobs:
           asset_content_type: application/vnd.android.package-archive
 
       - name: Download Build Log Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v2
         with:
           name: build_log_${{ github.sha }}
           path: build_log
