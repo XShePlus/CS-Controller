@@ -10,6 +10,8 @@ on:
 
 jobs:
   build:
+    outputs:
+      apk_path: ${{ steps.find_apk.outputs.apk_path }}
     runs-on: ubuntu-latest
     if: ${{ !startsWith(github.event.head_commit.message, '[skip ci]') }}
 
@@ -79,7 +81,9 @@ jobs:
             exit 1
           fi
           echo "✅ APK file found: $apk_file"
-          echo "apk_path=$apk_file" >> $GITHUB_ENV
+          # 将 APK 路径写入 job 输出
+          echo "apk_path=$apk_file" >> $GITHUB_OUTPUT
+          # 同时设置旧版 set-output 以兼容部分工具（将来可能会弃用）
           echo "::set-output name=apk_path::$apk_file"
 
       - name: Upload Build Log
@@ -112,7 +116,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.apk_path }}
+          asset_path: ${{ needs.build.outputs.apk_path }}
           asset_name: apk_release_${{ github.sha }}.apk
           asset_content_type: application/vnd.android.package-archive
 
