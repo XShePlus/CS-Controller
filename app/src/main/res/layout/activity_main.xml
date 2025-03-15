@@ -175,139 +175,7 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
 
-                <com.google.android.material.card.MaterialCardView
-                    style="@style/Widget.Material3.CardView.Elevated"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:id="@+id/changemode"
-                    android:layout_marginTop="16dp"
-                    android:clickable="true"
-                    app:cardElevation="0dp">
-
-                    <TextView
-                        android:id="@+id/textView6"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_margin="16dp"
-                        android:text="@string/select_mode"
-                        android:textSize="18sp" />
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|bottom">
-
-                        <com.google.android.material.card.MaterialCardView
-                            style="@style/Widget.Material3.CardView.Elevated"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:layout_gravity="end|bottom"
-                            android:layout_margin="8dp"
-                            android:clickable="true"
-                            app:cardBackgroundColor="@color/material_dynamic_primary80">
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:layout_gravity="end|bottom"
-                                android:layout_margin="2dp"
-                                android:orientation="horizontal">
-
-                                <com.google.android.material.card.MaterialCardView
-                                    style="@style/Widget.Material3.CardView.Elevated"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="match_parent"
-                                    android:layout_margin="2dp"
-                                    android:layout_weight="1"
-                                    android:clickable="true"
-                                    app:cardBackgroundColor="@color/material_dynamic_primary60">
-
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:layout_margin="8dp"
-                                        android:gravity="center"
-                                        android:text="喵喵"
-                                        android:textSize="16sp" />
-
-                                </com.google.android.material.card.MaterialCardView>
-
-
-                                <com.google.android.material.card.MaterialCardView
-                                    style="@style/Widget.Material3.CardView.Elevated"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="match_parent"
-                                    android:layout_margin="2dp"
-                                    android:layout_weight="1"
-                                    android:clickable="true"
-                                    app:cardBackgroundColor="@color/material_dynamic_primary60">
-
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:layout_margin="8dp"
-                                        android:gravity="center"
-                                        android:text="喵喵"
-                                        android:textSize="16sp" />
-
-                                </com.google.android.material.card.MaterialCardView>
-
-                                <com.google.android.material.card.MaterialCardView
-                                    style="@style/Widget.Material3.CardView.Elevated"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="match_parent"
-                                    android:layout_margin="2dp"
-                                    android:layout_weight="1"
-                                    android:clickable="true"
-                                    app:cardBackgroundColor="@color/material_dynamic_primary60">
-
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:layout_margin="8dp"
-                                        android:gravity="center"
-                                        android:text="喵喵"
-                                        android:textSize="16sp" />
-
-                                </com.google.android.material.card.MaterialCardView>
-
-
-                                <com.google.android.material.card.MaterialCardView
-                                    style="@style/Widget.Material3.CardView.Elevated"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="match_parent"
-                                    android:layout_margin="2dp"
-                                    android:layout_weight="1"
-                                    android:clickable="true"
-                                    app:cardBackgroundColor="@color/material_dynamic_primary60">
-
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:layout_margin="8dp"
-                                        android:gravity="center"
-                                        android:text="喵喵"
-                                        android:textSize="16sp" />
-
-                                </com.google.android.material.card.MaterialCardView>
-
-
-                            </LinearLayout>
-
-
-                        </com.google.android.material.card.MaterialCardView>
-
-
-                    </LinearLayout>
-
-
-                </com.google.android.material.card.MaterialCardView>
-
-            </RelativeLayout>
 
 
             <com.google.android.material.card.MaterialCardView
@@ -331,7 +199,6 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:layout_gravity="center_vertical"
-                        android:contentDescription="TODO"
                         android:src="@drawable/outline_apps_24" />
 
                     <TextView
@@ -397,7 +264,6 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
-                    android:contentDescription="TODO"
                     android:orientation="horizontal"
                     android:padding="16dp">
 
