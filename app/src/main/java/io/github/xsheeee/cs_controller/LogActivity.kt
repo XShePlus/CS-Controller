@@ -4,10 +4,9 @@ import android.os.Bundle
 import android.os.FileObserver
 import android.view.View
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.widget.NestedScrollView
-import io.github.xsheeee.cs_controller.Tools.Values
+import io.github.xsheeee.cs_controller.tools.Values
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader

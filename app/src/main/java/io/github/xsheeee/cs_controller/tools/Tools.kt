@@ -1,20 +1,17 @@
-package io.github.xsheeee.cs_controller.Tools
+package io.github.xsheeee.cs_controller.tools
 
 import android.content.Context
 import com.topjohnwu.superuser.Shell
-import io.github.xsheeee.cs_controller.Tools.Logger.showToast
-import io.github.xsheeee.cs_controller.Tools.Logger.writeLog
+import io.github.xsheeee.cs_controller.tools.Logger.showToast
+import io.github.xsheeee.cs_controller.tools.Logger.writeLog
 
 class Tools(private val context: Context) {
     fun getModeName(mode: Int): String? {
         return MODE_MAP[mode]
     }
 
-    val sU: Boolean
-        get() = executeShellCommand("su")
-
     fun changeMode(modeName: String?) {
-        if (modeName == null || modeName.isEmpty()) {
+        if (modeName.isNullOrEmpty()) {
             showToast("模式名称不能为空")
             return
         }
@@ -38,7 +35,7 @@ class Tools(private val context: Context) {
 
     fun readFileWithShell(filePath: String): String? {
         val result = Shell.cmd("cat $filePath").exec()
-        if (result.isSuccess && !result.out.isEmpty()) {
+        if (result.isSuccess && result.out.isNotEmpty()) {
             return java.lang.String.join("\n", result.out)
         } else {
             logError("读取文件失败：$filePath", result)
@@ -64,7 +61,7 @@ class Tools(private val context: Context) {
         writeToFile(filePath, updatedContent.trim { it <= ' ' })
     }
 
-    fun writeToFile(filePath: String, content: String) {
+    private fun writeToFile(filePath: String, content: String) {
         if (!executeShellCommand("echo \"" + content.replace("\"", "\\\"") + "\" > " + filePath)) {
             showToast("写入失败：$filePath")
         }
@@ -75,7 +72,7 @@ class Tools(private val context: Context) {
             val filePath = Values.csmodulePath
             val result = Shell.cmd("grep version= $filePath").exec()
 
-            if (result.isSuccess && !result.out.isEmpty()) {
+            if (result.isSuccess && result.out.isNotEmpty()) {
                 return result.out[0].replace("version=", "").trim { it <= ' ' }
             } else {
                 logError("读取 module.prop 失败：$filePath", result)
@@ -85,10 +82,10 @@ class Tools(private val context: Context) {
 
     fun isProcessRunning(processPath: String): Boolean {
         val result = Shell.cmd("pgrep -f $processPath").exec()
-        return result.isSuccess && !result.out.isEmpty()
+        return result.isSuccess && result.out.isNotEmpty()
     }
 
-    fun executeShellCommand(command: String): Boolean {
+    private fun executeShellCommand(command: String): Boolean {
         val result = Shell.cmd(command).exec()
         if (!result.isSuccess) {
             logError("Shell 命令执行失败：$command", result)

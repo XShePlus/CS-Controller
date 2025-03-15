@@ -25,9 +25,10 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textfield.TextInputLayout
-import io.github.xsheeee.cs_controller.Tools.Logger
-import io.github.xsheeee.cs_controller.Tools.Tools
-import io.github.xsheeee.cs_controller.Tools.Values
+import io.github.xsheeee.cs_controller.tools.Logger
+import io.github.xsheeee.cs_controller.tools.Tools
+import io.github.xsheeee.cs_controller.tools.Values
+import io.github.xsheeee.cs_controller.tools.SuManager
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -120,13 +121,11 @@ class MainActivity : BaseActivity() {
         }
 
         findViewById<MaterialCardView>(R.id.run_service_sh).setOnClickListener {
-            Thread {
                 try {
-                    ProcessBuilder("su", "-c", "sh", Values.CsServicePath).start().waitFor()
+                    SuManager.exec("sh ${Values.CsServicePath}")
                 } catch (e: Exception) {
                     log(e.message ?: "Unknown error","E")
                 }
-            }.start()
             updateConfigTextView()
         }
     }
@@ -220,7 +219,7 @@ class MainActivity : BaseActivity() {
             "Unknown"
         }
     }
-
+    // cs版本
     private fun updateVersionTextView() {
         tools.versionFromModuleProp?.let { version ->
             val versionString = getString(R.string.cs_version)
@@ -229,7 +228,7 @@ class MainActivity : BaseActivity() {
             versionTextView.setText(R.string.read_version_error)
         }
     }
-
+    // 更新进程状态文本视图
     fun updateProcessStatusTextView() {
         val statusPrefix = getString(R.string.cs_work)
         if (tools.isProcessRunning(Values.csProcess)) {
@@ -245,13 +244,13 @@ class MainActivity : BaseActivity() {
         }
         processStatusTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
     }
-
+    // 运行service.sh(救活cs调度)
     fun runServiceSh() {
         if (tools.isProcessRunning(Values.csProcess)) {
             val alphaAnimation = AlphaAnimation(1f, 0f).apply {
                 duration = 100
             }
-
+            // 消失动画
             val scaleAnimation = ScaleAnimation(
                 1f, 0.5f, 1f, 0.5f,
                 Animation.RELATIVE_TO_SELF, 0.5f,
@@ -275,15 +274,15 @@ class MainActivity : BaseActivity() {
             runCsServiceSh.visibility = MaterialCardView.VISIBLE
         }
     }
-
+    // ROOT 检查
     private fun checkRootStatus() {
-        rootWarningCard.visibility = if (tools.sU) {
+        rootWarningCard.visibility = if (SuManager.isSuAvailable()) {
             MaterialCardView.GONE
         } else {
             MaterialCardView.VISIBLE
         }
     }
-
+    // 检查文件读写权限
     private fun checkStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
@@ -304,7 +303,7 @@ class MainActivity : BaseActivity() {
             }
         }
     }
-
+    // 管理所有文件权限
     private fun requestManageAllFilesPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
@@ -313,7 +312,7 @@ class MainActivity : BaseActivity() {
             startActivity(intent)
         }
     }
-
+    // 存储权限
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String>,
@@ -339,12 +338,9 @@ class MainActivity : BaseActivity() {
         super.onResume()
         excludeFromRecents(false)
     }
-
+    // 杀死进程
     private fun killMainProcess() {
         android.os.Process.killProcess(android.os.Process.myPid())
     }
 
-//    private fun logError(message: String) {
-//        Logger.writeLog("ERROR", TAG, message)
-//    }
 }

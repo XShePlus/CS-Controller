@@ -1,4 +1,4 @@
-package io.github.xsheeee.cs_controller
+package io.github.xsheeee.cs_controller.adapter
 
 import android.content.Intent
 import android.view.LayoutInflater
@@ -7,7 +7,10 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import io.github.xsheeee.cs_controller.Tools.AppInfo
+import io.github.xsheeee.cs_controller.AppConfigActivity
+import io.github.xsheeee.cs_controller.AppListActivity
+import io.github.xsheeee.cs_controller.R
+import io.github.xsheeee.cs_controller.tools.AppInfo
 import java.util.concurrent.ExecutorService
 
 class AppListAdapter(

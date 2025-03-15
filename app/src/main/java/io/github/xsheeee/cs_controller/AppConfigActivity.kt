@@ -10,10 +10,9 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.PopupMenu
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import com.google.android.material.button.MaterialButton
-import io.github.xsheeee.cs_controller.Tools.Values
+import io.github.xsheeee.cs_controller.tools.Values
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject

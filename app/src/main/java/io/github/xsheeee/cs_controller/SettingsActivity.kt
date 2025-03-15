@@ -10,14 +10,14 @@ import android.view.View
 import android.widget.CompoundButton
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.materialswitch.MaterialSwitch
-import io.github.xsheeee.cs_controller.Adapter.SwitchAdapter
-import io.github.xsheeee.cs_controller.Tools.Logger
-import io.github.xsheeee.cs_controller.Tools.Values
+import io.github.xsheeee.cs_controller.adapter.SwitchAdapter
+import io.github.xsheeee.cs_controller.tools.Logger
+import io.github.xsheeee.cs_controller.tools.SuManager
+import io.github.xsheeee.cs_controller.tools.Values
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.BufferedWriter
@@ -141,8 +141,7 @@ class SettingsActivity : BaseActivity() {
     private fun enableAccessibilityService() {
         try {
             // 使用Root权限开启无障碍服务
-            var command =
-                "settings put secure enabled_accessibility_services io.github.xsheeee.cs_controller/io.github.xsheeee.cs_controller.MyAccessibilityService"
+            var command = SuManager.exec("settings put secure enabled_accessibility_services io.github.xsheeee.cs_controller/io.github.xsheeee.cs_controller.MyAccessibilityService")
             executeRootCommand(command)
             command = "settings put secure accessibility_enabled 1"
             executeRootCommand(command)

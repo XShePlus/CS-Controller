@@ -3,8 +3,8 @@ package io.github.xsheeee.cs_controller
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
-import io.github.xsheeee.cs_controller.Tools.Logger
-import io.github.xsheeee.cs_controller.Tools.Tools
+import io.github.xsheeee.cs_controller.tools.Logger
+import io.github.xsheeee.cs_controller.tools.Tools
 
 class InfoActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

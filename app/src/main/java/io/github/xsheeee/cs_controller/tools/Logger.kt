@@ -1,4 +1,4 @@
-package io.github.xsheeee.cs_controller.Tools
+package io.github.xsheeee.cs_controller.tools
 
 import android.content.Context
 import android.os.Handler

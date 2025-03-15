@@ -6,7 +6,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Point
 import android.graphics.Rect
 import android.net.Uri
@@ -23,10 +22,10 @@ import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.widget.TextView
 import android.widget.Toast
-import io.github.xsheeee.cs_controller.Tools.ConfigManager
-import io.github.xsheeee.cs_controller.Tools.ConfigManager.ConfigData
-import io.github.xsheeee.cs_controller.Tools.Logger
-import io.github.xsheeee.cs_controller.Tools.Values
+import io.github.xsheeee.cs_controller.tools.ConfigManager
+import io.github.xsheeee.cs_controller.tools.ConfigManager.ConfigData
+import io.github.xsheeee.cs_controller.tools.Logger
+import io.github.xsheeee.cs_controller.tools.Values
 import java.io.File
 import java.io.FileWriter
 import java.io.IOException
@@ -56,11 +55,6 @@ class MyAccessibilityService : AccessibilityService() {
         floatingWindowEnabled = configData!!.floatingWindowEnabled
 
         updateFloatingWindowState()
-    }
-
-    private fun updateAppMode(packageName: String, mode: String) {
-        ConfigManager.updateAppMode(Values.appConfig, packageName, mode)
-        loadAppConfig() // 重新加载配置
     }
 
     override fun onCreate() {
@@ -220,17 +214,6 @@ class MyAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun applyConfigChanges(
-        newAppModeMap: MutableMap<String, String>,
-        newDefaultMode: String,
-        newFloatingWindowEnabled: Boolean
-    ) {
-        appModeMap = newAppModeMap
-        defaultMode = newDefaultMode
-        floatingWindowEnabled = newFloatingWindowEnabled
-        updateFloatingWindowState()
-    }
-
     private fun updateCSConfig(mode: String) {
         if (mode != currentMode) {
             try {
@@ -248,33 +231,8 @@ class MyAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun getAppMode(packageName: String): String? {
+    private fun getAppMode(packageName: String): String {
         return configData!!.appModeMap.getOrDefault(packageName, configData!!.defaultMode)
-    }
-
-    private fun isDefaultDesktopApp(packageName: String): Boolean {
-        if (cachedDesktopApps.contains(packageName)) {
-            return true
-        }
-
-        try {
-            val pm = packageManager
-            val intent = Intent(Intent.ACTION_MAIN)
-            intent.addCategory(Intent.CATEGORY_HOME)
-            val resolveInfoList =
-                pm.queryIntentActivities(intent, PackageManager.GET_RESOLVED_FILTER)
-
-            for (resolveInfo in resolveInfoList) {
-                if (packageName == resolveInfo.activityInfo.packageName) {
-                    cachedDesktopApps.add(packageName)
-                    return true
-                }
-            }
-        } catch (e: Exception) {
-            logError("Error checking desktop app: " + e.message,"E")
-        }
-
-        return false
     }
 
     override fun onServiceConnected() {
@@ -307,9 +265,9 @@ class MyAccessibilityService : AccessibilityService() {
 
                 if (currentWindow != "未知") {
                     val actualPackage =
-                        if (shouldExclude(event, currentWindow)) previousWindow else currentWindow
+                        if (shouldExclude(event)) previousWindow else currentWindow
                     val mode = getAppMode(actualPackage)
-                    updateCSConfig(mode!!)
+                    updateCSConfig(mode)
                 }
             }
         } catch (e: Exception) {
@@ -325,7 +283,7 @@ class MyAccessibilityService : AccessibilityService() {
             event.source!!.getBoundsInScreen(rect)
 
             val actualPackage =
-                if (shouldExclude(event, currentWindow)) previousWindow else currentWindow
+                if (shouldExclude(event)) previousWindow else currentWindow
             val mode = getAppMode(actualPackage)
 
             return String.format(
@@ -347,7 +305,7 @@ class MyAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun shouldExclude(event: AccessibilityEvent, packageName: String): Boolean {
+    private fun shouldExclude(event: AccessibilityEvent): Boolean {
         return event.className != null
                 && (event.className.toString() == "android.inputmethodservice.SoftInputWindow"
                 || event.className.toString() == "android.widget.FrameLayout"

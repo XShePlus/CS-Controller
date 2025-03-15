@@ -1,4 +1,4 @@
-package io.github.xsheeee.cs_controller.Adapter
+package io.github.xsheeee.cs_controller.adapter
 
 import android.content.Context
 import android.view.LayoutInflater
@@ -7,9 +7,9 @@ import android.view.ViewGroup
 import android.widget.CompoundButton
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.materialswitch.MaterialSwitch
-import io.github.xsheeee.cs_controller.Adapter.SwitchAdapter.SwitchViewHolder
+import io.github.xsheeee.cs_controller.adapter.SwitchAdapter.SwitchViewHolder
 import io.github.xsheeee.cs_controller.R
-import io.github.xsheeee.cs_controller.Tools.Tools
+import io.github.xsheeee.cs_controller.tools.Tools
 
 class SwitchAdapter(
     context: Context?,
