@@ -10,11 +10,10 @@ on:
 
 jobs:
   build:
-    outputs:
-      apk_path: ${{ steps.find_apk.outputs.apk_path }}
     runs-on: ubuntu-latest
     if: ${{ !startsWith(github.event.head_commit.message, '[skip ci]') }}
-
+    outputs:
+      apk_file: ${{ steps.find_apk.outputs.apk_path }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -81,10 +80,15 @@ jobs:
             exit 1
           fi
           echo "✅ APK file found: $apk_file"
-          # 将 APK 路径写入 job 输出
-          echo "apk_path=$apk_file" >> $GITHUB_OUTPUT
-          # 同时设置旧版 set-output 以兼容部分工具（将来可能会弃用）
+          # 同时写入环境变量和输出变量（build job 的输出可以用于调试，但文件本身无法跨 job 传递）
+          echo "apk_path=$apk_file" >> $GITHUB_ENV
           echo "::set-output name=apk_path::$apk_file"
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk_file
+          path: ${{ env.apk_path }}
 
       - name: Upload Build Log
         uses: actions/upload-artifact@v4
@@ -95,7 +99,6 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
 
@@ -110,15 +113,39 @@ jobs:
           draft: false
           prerelease: false
 
+      - name: Download APK Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: apk_file
+          path: apk_artifact
+
+      - name: Locate APK file
+        id: locate_apk
+        run: |
+          # 在下载目录下查找 APK 文件（假设只有一个 APK 文件）
+          apk_file=$(find apk_artifact -type f -name '*.apk' | head -n 1)
+          if [ -z "$apk_file" ]; then
+            echo "❌ No APK file found in artifact!"
+            exit 1
+          fi
+          echo "✅ APK file located: $apk_file"
+          echo "::set-output name=apk_file::$apk_file"
+
       - name: Upload APK to Release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ needs.build.outputs.apk_path }}
+          asset_path: ${{ steps.locate_apk.outputs.apk_file }}
           asset_name: apk_release_${{ github.sha }}.apk
           asset_content_type: application/vnd.android.package-archive
+
+      - name: Download Build Log Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: build_log_${{ github.sha }}
+          path: build_log
 
       - name: Upload Build Log to Release
         uses: actions/upload-release-asset@v1
@@ -126,6 +153,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: build.log
+          asset_path: build_log/build_log_${{ github.sha }}
           asset_name: build_log_${{ github.sha }}.log
           asset_content_type: text/plain
