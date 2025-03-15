@@ -15,13 +15,13 @@ jobs:
     outputs:
       apk_file: ${{ steps.find_apk.outputs.apk_path }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           fetch-depth: 0
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'adopt'
@@ -81,7 +81,7 @@ jobs:
           fi
           echo "✅ APK file found: $apk_file"
           echo "apk_path=$apk_file" >> $GITHUB_ENV
-          echo "::set-output name=apk_path::$apk_file"
+          echo "apk_path=$apk_file" >> $GITHUB_OUTPUT
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
@@ -92,28 +92,19 @@ jobs:
       - name: Upload Build Log Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build_log_${{ github.sha }}
+          name: build_log
           path: build.log
 
   release:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v1.0.${{ github.run_number }}
-          release_name: Release v1.0.${{ github.run_number }}
-          draft: false
-          prerelease: false
+      - uses: actions/checkout@v4
 
       - name: Download APK Artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: apk_file
           path: apk_artifact
@@ -127,30 +118,32 @@ jobs:
             exit 1
           fi
           echo "✅ APK file located: $apk_file"
-          echo "::set-output name=apk_file::$apk_file"
+          echo "apk_file=$apk_file" >> $GITHUB_OUTPUT
 
-      - name: Upload APK to Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.locate_apk.outputs.apk_file }}
-          asset_name: apk_release_${{ github.sha }}.apk
-          asset_content_type: application/vnd.android.package-archive
+          tag_name: v1.0.${{ github.run_number }}
+          name: Release v1.0.${{ github.run_number }}
+          draft: false
+          prerelease: false
+          files: |
+            ${{ steps.locate_apk.outputs.apk_file }}
 
       - name: Download Build Log Artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
-          name: build_log_${{ github.sha }}
+          name: build_log
           path: build_log
 
+      - name: Rename and Upload Build Log to Release
+        run: |
+          cp build_log/build.log build_log_${{ github.sha }}.log
+
       - name: Upload Build Log to Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: build_log/build_log_${{ github.sha }}
-          asset_name: build_log_${{ github.sha }}.log
-          asset_content_type: text/plain
+          tag_name: v1.0.${{ github.run_number }}
+          files: |
+            build_log_${{ github.sha }}.log
