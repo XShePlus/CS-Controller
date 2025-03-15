@@ -14,6 +14,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     if: ${{ !startsWith(github.event.head_commit.message, '[skip ci]') }}
+
     steps:
       - uses: actions/checkout@v3
         with:
@@ -71,9 +72,27 @@ jobs:
           KEY_ALIAS: ${{ secrets.SIGN_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.SIGN_KEY_PASSWORD }}
 
+      - name: Find APK file
+        id: find_apk
+        run: |
+          apk_file=$(ls ./app/build/outputs/apk/release/*.apk | head -n 1)
+          if [ -z "$apk_file" ]; then
+            echo "❌ No APK file found!"
+            exit 1
+          fi
+          echo "✅ APK file found: $apk_file"
+          echo "apk_path=$apk_file" >> $GITHUB_ENV
+
+      - name: Upload Build Log
+        uses: actions/upload-artifact@v4
+        with:
+          name: build_log_${{ github.sha }}
+          path: build.log
+
   release:
     needs: build
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v3
 
@@ -94,7 +113,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./app/build/outputs/apk/release/*.apk
+          asset_path: ${{ env.apk_path }}
           asset_name: apk_release_${{ github.sha }}.apk
           asset_content_type: application/vnd.android.package-archive
 
