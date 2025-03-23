@@ -81,7 +81,7 @@ class Tools(private val context: Context) {
         }
 
     fun isProcessRunning(processPath: String): Boolean {
-        val result = Shell.cmd("pgrep -f $processPath").exec()
+        val result = Shell.cmd("pgrep -f $processName").exec()
         return result.isSuccess && result.out.isNotEmpty()
     }
 

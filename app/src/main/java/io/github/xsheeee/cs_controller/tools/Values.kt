@@ -4,6 +4,7 @@ import java.util.Arrays
 
 object Values {
     var isFirst: Boolean = false
+    const val processName: String = "MW_CpuSpeedController"
     const val CSConfigPath: String = "/storage/emulated/0/Android/MW_CpuSpeedController/config.txt"
     const val CSCPath: String = "/sdcard/Android/CSController/"
     const val bPath: String = "/sdcard/Android/CSController/balance.txt"
