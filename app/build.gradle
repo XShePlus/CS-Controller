@@ -11,8 +11,8 @@ android {
         applicationId "io.github.xsheeee.cs_controller"
         minSdk 29
         targetSdk 35
-        versionCode 1103
-        versionName "1.1.0.3"
+        versionCode 1104
+        versionName "1.1.0.4"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

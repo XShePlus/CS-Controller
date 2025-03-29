@@ -231,7 +231,7 @@ class MainActivity : BaseActivity() {
     // 更新进程状态文本视图
     fun updateProcessStatusTextView() {
         val statusPrefix = getString(R.string.cs_work)
-        if (tools.isProcessRunning(Values.csProcess)) {
+        if (tools.isProcessRunning()) {
             processStatusTextView.text = "$statusPrefix${getString(R.string.cs_work_true)}"
             val typedValue = TypedValue()
             theme.resolveAttribute(R.attr.colorSecondaryContainer, typedValue, true)
@@ -246,7 +246,7 @@ class MainActivity : BaseActivity() {
     }
     // 运行service.sh(救活cs调度)
     fun runServiceSh() {
-        if (tools.isProcessRunning(Values.csProcess)) {
+        if (tools.isProcessRunning()) {
             val alphaAnimation = AlphaAnimation(1f, 0f).apply {
                 duration = 100
             }

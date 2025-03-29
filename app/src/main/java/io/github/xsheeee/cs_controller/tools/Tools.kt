@@ -2,8 +2,9 @@ package io.github.xsheeee.cs_controller.tools
 
 import android.content.Context
 import com.topjohnwu.superuser.Shell
-import io.github.xsheeee.cs_controller.tools.Logger.showToast
 import io.github.xsheeee.cs_controller.tools.Logger.writeLog
+import io.github.xsheeee.cs_controller.tools.Logger.showToast
+import io.github.xsheeee.cs_controller.tools.Values.processName
 
 class Tools(private val context: Context) {
     fun getModeName(mode: Int): String? {
@@ -12,7 +13,7 @@ class Tools(private val context: Context) {
 
     fun changeMode(modeName: String?) {
         if (modeName.isNullOrEmpty()) {
-            showToast("模式名称不能为空")
+            showToast(context,"模式名称不能为空")
             return
         }
 
@@ -20,7 +21,7 @@ class Tools(private val context: Context) {
         if (mode != null) {
             writeToFile(CS_CONFIG_PATH, modeName)
         } else {
-            showToast("无效的模式名称：$modeName")
+            showToast(context,"无效的模式名称：$modeName")
         }
     }
 
@@ -46,7 +47,7 @@ class Tools(private val context: Context) {
     fun updateConfigEntry(filePath: String, key: String, newValue: String) {
         val content = readFileWithShell(filePath)
         if (content == null) {
-            showToast("无法读取配置文件：$filePath")
+            showToast(context,"无法读取配置文件：$filePath")
             return
         }
 
@@ -63,7 +64,7 @@ class Tools(private val context: Context) {
 
     private fun writeToFile(filePath: String, content: String) {
         if (!executeShellCommand("echo \"" + content.replace("\"", "\\\"") + "\" > " + filePath)) {
-            showToast("写入失败：$filePath")
+            showToast(context,"写入失败：$filePath")
         }
     }
 
@@ -80,7 +81,7 @@ class Tools(private val context: Context) {
             }
         }
 
-    fun isProcessRunning(processPath: String): Boolean {
+    fun isProcessRunning(): Boolean {
         val result = Shell.cmd("pgrep -f $processName").exec()
         return result.isSuccess && result.out.isNotEmpty()
     }
@@ -93,9 +94,9 @@ class Tools(private val context: Context) {
         return result.isSuccess
     }
 
-    private fun showToast(message: String) {
-        showToast(context, message)
-    }
+//    private fun showToast(message: String) {
+//        showToast(context, message)
+//    }
 
     private fun logError(message: String, result: Shell.Result) {
         writeLog("ERROR", TAG, message + " | Error: " + java.lang.String.join("\n", result.err))
