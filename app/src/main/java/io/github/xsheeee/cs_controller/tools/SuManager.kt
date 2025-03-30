@@ -19,12 +19,11 @@ object SuManager {
     fun isSuAvailable(): Boolean {
     return try {
         val process = Runtime.getRuntime().exec("su")
-        true
+        process.isAlive
     } catch (e: Exception) {
         false
     }
 }
-
     // 初始化 su 进程
     private suspend fun initSu(): Boolean {
         return mutex.withLock {  // 确保此方法在同一时间内只能有一个协程访问
