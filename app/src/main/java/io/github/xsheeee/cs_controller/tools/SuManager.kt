@@ -18,7 +18,7 @@ object SuManager {
     // 检查 su 是否可用
     fun isSuAvailable(): Boolean {
         return try {
-            Runtime.getRuntime().exec("su -c exit").waitFor() == 0
+            Runtime.getRuntime().exec("su").waitFor() == 0
         } catch (e: Exception) {
             false
         }
