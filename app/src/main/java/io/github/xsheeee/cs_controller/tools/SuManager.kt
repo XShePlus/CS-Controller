@@ -17,12 +17,13 @@ object SuManager {
 
     // 检查 su 是否可用
     fun isSuAvailable(): Boolean {
-        return try {
-            Runtime.getRuntime().exec("su exit").waitFor() == 0
-        } catch (e: Exception) {
-            false
-        }
+    return try {
+        val process = Runtime.getRuntime().exec("su")
+        true
+    } catch (e: Exception) {
+        false
     }
+}
 
     // 初始化 su 进程
     private suspend fun initSu(): Boolean {
