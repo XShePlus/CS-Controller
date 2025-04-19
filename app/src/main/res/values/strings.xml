@@ -57,7 +57,7 @@
     <string name="mowei_github">查看开发者的 GitHub 主页</string>
     <string name="url_xshe_source">https://github.com/XSheeee/CS-Controller</string>
     <string name="url_xshe_github">https://github.com/XSheeee</string>
-    <string name="url_mowei_source">https://github.com/MoWei-2077/CPU-speed-controller</string>
+    <string name="url_mowei_source">https://github.com/MoWei-2077/MW_CpuTurboScheduler</string>
     <string name="url_mowei_github">https://github.com/Mowei-2077</string>
     <string name="module_log">模块日志</string>
     <string name="settings">设置</string>
