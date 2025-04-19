@@ -131,7 +131,7 @@ jobs:
         uses: softprops/action-gh-release@v1  
         with:  
           tag_name: v${{ steps.get_version.outputs.version }}-${{ github.run_number }}  
-          name: v${{ steps.get_version.outputs.version }}-${{ github.run_number }} ([${{ github.sha_short }}]) 
+          name: v${{ steps.get_version.outputs.version }} ([${{ github.sha }}))  
           body: |  
             ${{ github.event.head_commit.message }}  
           draft: false  
