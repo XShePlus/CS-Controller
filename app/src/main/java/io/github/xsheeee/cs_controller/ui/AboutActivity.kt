@@ -1,4 +1,4 @@
-package io.github.xsheeee.cs_controller
+package io.github.xsheeee.cs_controller.ui
 
 import android.content.Intent
 import android.net.Uri
@@ -9,8 +9,8 @@ import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
 import android.view.View
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import io.github.xsheeee.cs_controller.R
 
 class AboutActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

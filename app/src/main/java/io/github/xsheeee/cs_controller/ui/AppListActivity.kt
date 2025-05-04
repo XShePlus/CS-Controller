@@ -1,4 +1,4 @@
-package io.github.xsheeee.cs_controller
+package io.github.xsheeee.cs_controller.ui
 
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -19,8 +19,9 @@ import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import io.github.xsheeee.cs_controller.R
 import io.github.xsheeee.cs_controller.tools.AppInfo
-import io.github.xsheeee.cs_controller.adapter.AppListAdapter
+import io.github.xsheeee.cs_controller.ui.adapter.AppListAdapter
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File

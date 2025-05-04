@@ -1,4 +1,4 @@
-package io.github.xsheeee.cs_controller
+package io.github.xsheeee.cs_controller.ui
 
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
@@ -12,6 +12,7 @@ import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.appcompat.widget.Toolbar
 import com.google.android.material.button.MaterialButton
+import io.github.xsheeee.cs_controller.R
 import io.github.xsheeee.cs_controller.tools.Values
 import org.json.JSONArray
 import org.json.JSONException
@@ -166,7 +167,6 @@ class AppConfigActivity : BaseActivity() {
                 }
             }
 
-            // Add to new mode if not "跟随全局"
             if (newMode != "跟随全局") {
                 var modeArray = configJson!!.optJSONArray(newMode)
                 if (modeArray == null) {
