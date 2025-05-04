@@ -1,7 +1,6 @@
-package io.github.xsheeee.cs_controller.ui
+package io.github.xsheeee.cs_controller
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -26,7 +25,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textfield.TextInputLayout
-import io.github.xsheeee.cs_controller.R
 import io.github.xsheeee.cs_controller.tools.Logger
 import io.github.xsheeee.cs_controller.tools.Tools
 import io.github.xsheeee.cs_controller.tools.Values
@@ -145,10 +143,7 @@ class MainActivity : BaseActivity() {
     private fun changeModeInMainActivity(mode: Int) {
         val modeName = tools.getModeName(mode)
         modeName?.let {
-            // 先修改CS配置文件中的模式
             tools.changeMode(it)
-            
-            // 更新app_config.json中的默认模式
             val configFile = File(CONFIG_FILE_PATH)
 
             if (!configFile.exists()) {
@@ -157,35 +152,29 @@ class MainActivity : BaseActivity() {
 
             tools.readFileWithShell(CONFIG_FILE_PATH)?.takeIf { content -> content.isNotEmpty() }?.let { content ->
                 try {
-                    val jsonObject = JSONObject(content)
-                    
-                    // 检查当前默认模式是否与新模式相同
-                    val currentDefaultMode = jsonObject.optString("default", "")
-                    if (currentDefaultMode != modeName) {
-                        // 模式不同，才更新
-                        jsonObject.put("default", modeName)
-                        
-                        BufferedWriter(FileWriter(configFile)).use { writer ->
-                            writer.write(jsonObject.toString(2))
-                        }
+                    val jsonObject = JSONObject(content).apply {
+                        put("default", modeName)
+                    }
+
+                    BufferedWriter(FileWriter(configFile)).use { writer ->
+                        writer.write(jsonObject.toString(2))
                     }
                     updateConfigTextView()
                 } catch (e: Exception) {
                     log(e.message ?: "Unknown error","E")
-                    configTextView.setText(getString(R.string.error))
+                    configTextView.setText("ERROR")
                 }
             } ?: createDefaultConfigFile()
         } ?: run {
-            configTextView.setText(getString(R.string.error))
+            configTextView.setText("ERROR")
         }
     }
 
-    @SuppressLint("SetTextI18n")
     private fun createDefaultConfigFile() {
         try {
             val jsonObject = JSONObject().apply {
                 put("default", "powersave")
-                put("log", "ERROR")
+                put("log", "Disable")
                 put("floatingWindow", false)
                 put("powersave", JSONArray())
                 put("balance", JSONArray())
@@ -198,11 +187,10 @@ class MainActivity : BaseActivity() {
             }
         } catch (e: Exception) {
             log(e.message ?: "Unknown error","E")
-            configTextView.setText(getString(R.string.error))
+            configTextView.setText("ERROR")
         }
     }
 
-    @SuppressLint("SetTextI18n")
     private fun updateConfigTextView() {
         val configFile = File(CONFIG_FILE_PATH)
         if (configFile.exists()) {

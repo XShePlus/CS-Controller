@@ -1,72 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
-    android:orientation="vertical">
+<LinearLayout
+     xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:app="http://schemas.android.com/apk/res-auto"
+     xmlns:tools="http://schemas.android.com/tools"
+     android:layout_height="match_parent"
+     android:layout_width="match_parent"
+     android:orientation="vertical"
+     android:fitsSystemWindows="true">
 
     <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/backButton5"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:navigationIcon="@drawable/outline_arrow_back_24"
-        app:title="@string/settings"
-        app:titleCentered="true" />
+         android:layout_height="wrap_content"
+         android:layout_width="match_parent"
+         app:title="@string/settings"
+         app:titleCentered="true"
+         app:navigationIcon="@drawable/outline_arrow_back_24"
+         android:id="@+id/backButton5" />
 
     <androidx.core.widget.NestedScrollView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:fitsSystemWindows="true">
+         android:layout_height="wrap_content"
+         android:layout_width="match_parent"
+         android:fitsSystemWindows="true">
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+             android:layout_height="wrap_content"
+             android:layout_width="match_parent"
+             android:orientation="vertical">
 
             <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:text="App" />
+                 android:layout_height="wrap_content"
+                 android:layout_width="match_parent"
+                 android:layout_marginStart="16dp"
+                 android:text="App" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switchAccessibility"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:foreground="?attr/selectableItemBackground"
-                android:padding="16dp"
-                android:text="后台服务（无障碍）" />
+                 android:layout_height="wrap_content"
+                 android:layout_width="match_parent"
+                 android:padding="16dp"
+                 android:id="@+id/switchAccessibility"
+                 android:foreground="?attr/selectableItemBackground"
+                 android:text="后台服务（无障碍）" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switchFloatingWindow"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:foreground="?attr/selectableItemBackground"
-                android:padding="16dp"
-                android:text="调试悬浮窗" />
+                 android:layout_height="wrap_content"
+                 android:layout_width="match_parent"
+                 android:padding="16dp"
+                 android:id="@+id/switchFloatingWindow"
+                 android:foreground="?attr/selectableItemBackground"
+                 android:text="调试悬浮窗" />
 
             <TextView
-                android:id="@+id/DeviceInfo"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="?attr/colorOnSecondaryContainer"
-                android:foreground="?attr/selectableItemBackground"
-                android:padding="16dp"
-                android:text="DeviceInfo" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:text="Module" />
+                 android:layout_height="wrap_content"
+                 android:layout_width="match_parent"
+                 android:layout_marginStart="16dp"
+                 android:text="Module" />
 
             <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_view"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:nestedScrollingEnabled="false" />
+                 android:layout_height="match_parent"
+                 android:layout_width="match_parent"
+                 android:nestedScrollingEnabled="false"
+                 android:id="@+id/recycler_view" />
 
         </LinearLayout>
 

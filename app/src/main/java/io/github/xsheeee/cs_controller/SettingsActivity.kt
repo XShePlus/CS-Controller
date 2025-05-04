@@ -1,4 +1,4 @@
-package io.github.xsheeee.cs_controller.ui
+package io.github.xsheeee.cs_controller
 
 import android.content.Intent
 import android.net.Uri
@@ -14,35 +14,36 @@ import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.materialswitch.MaterialSwitch
-import io.github.xsheeee.cs_controller.R
+import io.github.xsheeee.cs_controller.adapter.SwitchAdapter
 import io.github.xsheeee.cs_controller.tools.Logger
 import io.github.xsheeee.cs_controller.tools.SuManager
 import io.github.xsheeee.cs_controller.tools.Values
-import io.github.xsheeee.cs_controller.ui.adapter.SwitchAdapter
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.FileReader
 import java.io.FileWriter
 import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.Locale
 
 class SettingsActivity : BaseActivity() {
-
     private val switchKeys: MutableList<String> = ArrayList()
     private val configMap: MutableMap<String, Boolean> = HashMap()
     private val keyTranslations: MutableMap<String, String> = HashMap()
     private val keyDisplayMap: MutableMap<String, String> = HashMap()
     private var adapter: SwitchAdapter? = null
 
-    private val filePickerLauncher = registerForActivityResult(
+    private val filePickerLauncher = registerForActivityResult<Intent, ActivityResult>(
         ActivityResultContracts.StartActivityForResult()
     ) { result: ActivityResult ->
         if (result.resultCode == RESULT_OK && result.data != null) {
             val uri = result.data!!.data
-            uri?.let { importTranslationFile(it) }
+            if (uri != null) {
+                importTranslationFile(uri)
+            }
         }
     }
 
@@ -52,30 +53,37 @@ class SettingsActivity : BaseActivity() {
     }
 
     private fun setupPermissionSwitches() {
+        // 检查无障碍权限
         val isAccessibilityEnabled = isAccessibilityServiceEnabled
         val switchAccessibility = findViewById<MaterialSwitch>(R.id.switchAccessibility)
         switchAccessibility.isChecked = isAccessibilityEnabled
-        switchAccessibility.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
-            if (isChecked) enableAccessibilityService() else disableAccessibilityService()
+        switchAccessibility.setOnCheckedChangeListener { buttonView: CompoundButton?, isChecked: Boolean ->
+            if (isChecked) {
+                enableAccessibilityService()
+            } else {
+                disableAccessibilityService()
+            }
         }
 
+        // 读取配置文件控制悬浮窗开关
         val appConfigPath = Values.appConfig
         val isFloatingWindowEnabled = readFloatingWindowConfig(appConfigPath)
         val switchFloatingWindow = findViewById<MaterialSwitch>(R.id.switchFloatingWindow)
         switchFloatingWindow.isChecked = isFloatingWindowEnabled
-        switchFloatingWindow.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
+
+        switchFloatingWindow.setOnCheckedChangeListener { buttonView: CompoundButton?, isChecked: Boolean ->
             updateFloatingWindowConfig(appConfigPath, isChecked)
         }
     }
 
     private fun readFloatingWindowConfig(configPath: String): Boolean {
-        return try {
+        try {
             val jsonContent = String(Files.readAllBytes(Paths.get(configPath)))
             val config = JSONObject(jsonContent)
-            config.optBoolean("floatingWindow", false)
+            return config.optBoolean("floatingWindow", false)
         } catch (e: Exception) {
             showToast("读取悬浮窗配置失败：" + e.message)
-            false
+            return false
         }
     }
 
@@ -100,7 +108,7 @@ class SettingsActivity : BaseActivity() {
         val toolbar = findViewById<Toolbar>(R.id.backButton5)
         setSupportActionBar(toolbar)
         toolbar.setNavigationIcon(R.drawable.outline_arrow_back_24)
-        toolbar.setNavigationOnClickListener { finish() }
+        toolbar.setNavigationOnClickListener { v: View? -> finish() }
 
         loadConfig()
         initSwitchKeys()
@@ -110,77 +118,62 @@ class SettingsActivity : BaseActivity() {
         adapter = SwitchAdapter(this, switchKeys, configMap, CONFIG_FILE_PATH)
         recyclerView.adapter = adapter
 
-        val view = findViewById<View>(R.id.DeviceInfo)
-        view.setOnClickListener {
-            val intent = Intent(this, DeviceInfoActivity::class.java)
-            startActivity(intent)
-        }
-
-
-
         loadTranslationsFromPreferences()
         reorderKeys()
 
+        // 设置权限开关
         setupPermissionSwitches()
     }
 
     private val isAccessibilityServiceEnabled: Boolean
         get() {
-            val enabledServices = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-            return enabledServices?.contains("io.github.xsheeee.cs_controller/io.github.xsheeee.cs_controller.MyAccessibilityService") == true
+            val enabledServices =
+                Settings.Secure.getString(
+                    contentResolver,
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+                )
+            return enabledServices != null
+                    && enabledServices.contains(
+                "io.github.xsheeee.cs_controller/io.github.xsheeee.cs_controller.MyAccessibilityService"
+            )
         }
 
     private fun enableAccessibilityService() {
-        val componentName = "io.github.xsheeee.cs_controller/io.github.xsheeee.cs_controller.MyAccessibilityService"
         try {
-            val existing = SuManager.exec("settings get secure enabled_accessibility_services").trim()
-            val services = existing.split(":").filter { it.isNotEmpty() }.toMutableSet()
-            services.add(componentName)
-            val updatedList = services.joinToString(":")
-            SuManager.exec("settings put secure enabled_accessibility_services \"$updatedList\"")
-            SuManager.exec("settings put secure accessibility_enabled 1")
+            // 使用Root权限开启无障碍服务
+            var command = SuManager.exec("settings put secure enabled_accessibility_services io.github.xsheeee.cs_controller/io.github.xsheeee.cs_controller.MyAccessibilityService")
+            executeRootCommand(command)
+            command = "settings put secure accessibility_enabled 1"
+            executeRootCommand(command)
         } catch (e: Exception) {
-            showToast("Root启用失败，尝试使用手动方式")
-            try {
-                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                startActivity(intent)
-            } catch (e2: Exception) {
-                showToast("无法打开无障碍设置：" + e2.message)
-            }
+            showToast("启用无障碍服务失败：" + e.message)
         }
     }
 
     private fun disableAccessibilityService() {
-        val componentName = "io.github.xsheeee.cs_controller/io.github.xsheeee.cs_controller.MyAccessibilityService"
         try {
-            val existing = SuManager.exec("settings get secure enabled_accessibility_services").trim()
-            val updatedList = existing.split(":")
-                .filter { it.isNotEmpty() && it != componentName }
-                .joinToString(":")
-            SuManager.exec("settings put secure enabled_accessibility_services \"$updatedList\"")
-            if (updatedList.isEmpty()) {
-                SuManager.exec("settings put secure accessibility_enabled 0")
-            }
+            // 使用Root权限关闭无障碍服务
+            var command = "settings put secure enabled_accessibility_services ''"
+            executeRootCommand(command)
+            command = "settings put secure accessibility_enabled 0"
+            executeRootCommand(command)
         } catch (e: Exception) {
             showToast("禁用无障碍服务失败：" + e.message)
         }
     }
 
-
-
-//    private fun executeRootCommand(command: String) {
-//        try {
-//            val process = Runtime.getRuntime().exec("su")
-//            val writer = BufferedWriter(OutputStreamWriter(process.outputStream))
-//            writer.write(command)
-//            writer.flush()
-//            writer.close()
-//            process.waitFor()
-//        } catch (e: Exception) {
-//            showToast("ERROR" + e.message)
-//        }
-//    }
+    private fun executeRootCommand(command: String) {
+        try {
+            val process = Runtime.getRuntime().exec("su")
+            val writer = BufferedWriter(OutputStreamWriter(process.outputStream))
+            writer.write(command)
+            writer.flush()
+            writer.close()
+            process.waitFor()
+        } catch (e: Exception) {
+            showToast("ERROR" + e.message)
+        }
+    }
 
     private fun loadConfig() {
         configMap.clear()
@@ -189,7 +182,7 @@ class SettingsActivity : BaseActivity() {
                 var line: String
                 var inFunctionSection = false
                 while ((reader.readLine().also { line = it }) != null) {
-                    line = line.trim()
+                    line = line.trim { it <= ' ' }
                     if (line == "[function]") {
                         inFunctionSection = true
                         continue
@@ -199,14 +192,32 @@ class SettingsActivity : BaseActivity() {
                     }
                     if (inFunctionSection && line.contains("=")) {
                         val parts = line.split("=".toRegex(), limit = 2).toTypedArray()
-                        val key = parts[0].trim()
-                        val value = parts[1].trim().lowercase(Locale.getDefault()).toBoolean()
+                        val key = parts[0].trim { it <= ' ' }
+                        val value =
+                            parts[1].trim { it <= ' ' }.lowercase(Locale.getDefault()).toBoolean()
                         configMap[key] = value
                     }
                 }
             }
         } catch (e: Exception) {
-            Logger.showToast(this@SettingsActivity, getString(R.string.read_mode_error) + ": " + e.message)
+            Logger.showToast(
+                this@SettingsActivity, getString(R.string.read_mode_error) + ": " + e.message
+            )
+        }
+    }
+
+    private fun saveConfig() {
+        try {
+            BufferedWriter(FileWriter(CONFIG_FILE_PATH)).use { writer ->
+                writer.write("[function]\n")
+                for ((key, value) in configMap) {
+                    writer.write("$key=$value\n")
+                }
+            }
+        } catch (e: Exception) {
+            Logger.showToast(
+                this@SettingsActivity, getString(R.string.save_mode_error) + ": " + e.message
+            )
         }
     }
 
@@ -223,30 +234,30 @@ class SettingsActivity : BaseActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return if (item.itemId == R.id.import_translation) {
+        val id = item.itemId
+        if (id == R.id.import_translation) {
             openFilePicker()
-            true
-        } else {
-            super.onOptionsItemSelected(item)
+            return true
         }
+        return super.onOptionsItemSelected(item)
     }
 
     private fun importTranslationFile(uri: Uri) {
         try {
             val inputStream = contentResolver.openInputStream(uri)
-            inputStream?.let {
-                val reader = BufferedReader(InputStreamReader(it))
+            if (inputStream != null) {
+                val reader = BufferedReader(InputStreamReader(inputStream))
                 var line: String
                 while ((reader.readLine().also { line = it }) != null) {
-                    line = line.trim()
+                    line = line.trim { it <= ' ' }
                     if (line.contains("=")) {
                         val parts = line.split("=".toRegex(), limit = 2).toTypedArray()
-                        val key = parts[0].trim()
-                        val value = parts[1].trim()
+                        val key = parts[0].trim { it <= ' ' }
+                        val value = parts[1].trim { it <= ' ' }
                         keyTranslations[key] = value
                     }
                 }
-                it.close()
+                inputStream.close()
                 saveTranslationsToPreferences()
                 applyTranslations()
                 showToast("翻译文件导入成功！")
@@ -258,16 +269,23 @@ class SettingsActivity : BaseActivity() {
 
     private fun applyTranslations() {
         for (key in switchKeys) {
-            keyDisplayMap[key] = keyTranslations[key] ?: key
+            if (keyTranslations.containsKey(key)) {
+                // 如果有翻译，使用翻译，否则使用原始键
+                keyDisplayMap[key] = keyTranslations[key] ?: key
+            } else {
+                keyDisplayMap[key] = key // 如果没有翻译，直接使用键
+            }
         }
         adapter?.setKeyDisplayMap(keyDisplayMap)
         adapter?.notifyDataSetChanged()
     }
 
+
     private fun loadTranslationsFromPreferences() {
         val sharedPreferences = getSharedPreferences("Translations", MODE_PRIVATE)
-        switchKeys.forEach { key ->
-            sharedPreferences.getString(key, null)?.let { translation ->
+        for (key in switchKeys) {
+            val translation = sharedPreferences.getString(key, null)
+            if (translation != null) {
                 keyTranslations[key] = translation
             }
         }
@@ -277,15 +295,23 @@ class SettingsActivity : BaseActivity() {
     private fun saveTranslationsToPreferences() {
         val sharedPreferences = getSharedPreferences("Translations", MODE_PRIVATE)
         val editor = sharedPreferences.edit()
-        keyTranslations.forEach { (key, value) ->
+        for ((key, value) in keyTranslations) {
             editor.putString(key, value)
         }
         editor.apply()
     }
 
     private fun reorderKeys() {
-        val validKeys = switchKeys.filter { configMap.containsKey(it) }
-        val invalidKeys = switchKeys.filterNot { configMap.containsKey(it) }
+        val validKeys: MutableList<String> = ArrayList()
+        val invalidKeys: MutableList<String> = ArrayList()
+
+        for (key in switchKeys) {
+            if (configMap.containsKey(key)) {
+                validKeys.add(key)
+            } else {
+                invalidKeys.add(key)
+            }
+        }
 
         switchKeys.clear()
         switchKeys.addAll(validKeys)

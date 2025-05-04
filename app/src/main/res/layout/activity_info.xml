@@ -7,7 +7,7 @@
      android:layout_width="match_parent"
      android:orientation="vertical"
      android:fitsSystemWindows="true"
-     tools:context=".ui.InfoActivity">
+     tools:context=".InfoActivity">
 
     <com.google.android.material.card.MaterialCardView
          android:layout_height="wrap_content"
