@@ -46,8 +46,6 @@
     <string name="now_mode">模式：</string>
     <string name="cs_work_true">工作中</string>
     <string name="cs_work_false">未运行</string>
-    
-    <!-- 删除了重复的定义，只保留一项 -->
     <string name="read_mode_error">读取配置时发生错误</string>
     <string name="read_version_error">"无法读取版本信息"</string>
 
@@ -57,23 +55,12 @@
     <string name="mowei_github">查看开发者的 GitHub 主页</string>
     <string name="url_xshe_source">https://github.com/XSheeee/CS-Controller</string>
     <string name="url_xshe_github">https://github.com/XSheeee</string>
-    <string name="url_mowei_source">https://github.com/MoWei-2077/CPU-speed-controller</string>
+    <string name="url_mowei_source" translatable="false">https://github.com/MoWei-2077/CPU-speed-controller</string>
     <string name="url_mowei_github">https://github.com/Mowei-2077</string>
     <string name="module_log">模块日志</string>
     <string name="settings">设置</string>
     <string name="root_warning">请授予ROOT权限</string>
-    <string name="version_code">版本代号</string>
-    
-    <string name="enable_feas">启用Feas</string>
-    <string name="disable_qcom_gpuboost">关闭高通GPUBoost</string>
-    <string name="core_allocation">开启核心绑定</string>
-    <string name="load_balancing">开启负载均衡</string>
-    <string name="disable_ufs_clock_gate">禁用UFS时钟门</string>
-    <string name="touch_boost">开启触摸升频</string>
-    <string name="cfs_scheduler">CFS调度器</string>
-    <string name="dynamic_response">开启动态响应</string>
-    <string name="Adj_CpuIdle">调整CpuIdle</string>
-    <string name="New_Uclamp_Strategy">使用新的uclamp策略</string>
+
     <string name="search_text">搜索应用名、包名</string>
     <string name="Disable_Detailed_Log">关闭切换模式日志</string>
     <string name="translation_load_error">err</string>
@@ -81,4 +68,30 @@
     <string name="accessibility_service_description">监控前台应用变化并显示包名</string>
 
     <string name="save_mode_error">保存配置时发生错误</string>
+    <string name="error">ERROR</string>
+    <string name="version_code">版本</string>
+    <string name="title_activity_device_information">DeviceInformation</string>
+    <string name="title_activity_device_info">DeviceInfo</string>
+    <string name="android_version">Android版本</string>
+    <string name="kernel_version">内核版本：</string>
+    <string name="manufacturer">制造厂商：</string>
+    <string name="device_code">设备代号：</string>
+    <string name="device_info">设备信息</string>
+    <string name="copy_device_info">复制信息</string>
+    <string name="device_info_title">设备信息</string>
+    <string name="device_manufacturer">设备制造商: </string>
+    <string name="device_code_label">设备代号: </string>
+    <string name="android_version_label">Android版本: </string>
+    <string name="sdk_format">(SDK: %1$d)</string>
+    <string name="kernel_version_label">内核版本: </string>
+    <string name="soc_info_title">SoC Info</string>
+    <string name="soc_code_label">SocCode: </string>
+    <string name="hardware_label">HardWear: </string>
+    <string name="policy_label">Policy: </string>
+    <string name="io_info_title">I/O Info</string>
+    <string name="scheduler_label">Scheduler: </string>
+    <string name="clipboard_label">设备信息</string>
+    <string name="copied_to_clipboard">设备信息已复制到剪贴板</string>
+    <string name="copy_failed">复制失败</string>
+    <string name="get_device_info_failed">获取失败</string>
 </resources>
