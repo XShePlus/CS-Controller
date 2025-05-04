@@ -7,7 +7,7 @@
      android:layout_width="match_parent"
      android:orientation="vertical"
      android:fitsSystemWindows="true"
-     tools:context=".AppConfigActivity">
+     tools:context=".ui.AppConfigActivity">
 
     <com.google.android.material.appbar.MaterialToolbar
          android:layout_height="?attr/actionBarSize"

@@ -1,8 +1,9 @@
-package io.github.xsheeee.cs_controller
+package io.github.xsheeee.cs_controller.ui
 
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
+import io.github.xsheeee.cs_controller.R
 import io.github.xsheeee.cs_controller.tools.Logger
 import io.github.xsheeee.cs_controller.tools.Tools
 

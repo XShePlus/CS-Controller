@@ -1,105 +1,209 @@
 package io.github.xsheeee.cs_controller.tools
 
-import kotlinx.coroutines.*
 import android.util.Log
-import java.io.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.*
+import java.util.concurrent.atomic.AtomicBoolean
 
 object SuManager {
-    private const val TAG = "io.github.xsheeee.cs_controller.Tools.SuManager"
+    private const val TAG = "SuManager"
+
     private var process: Process? = null
     private var outputStream: DataOutputStream? = null
     private var inputStream: BufferedReader? = null
     private var errorStream: BufferedReader? = null
 
-    private val mutex = Mutex()  // 一个互斥锁
+    private val initialized = AtomicBoolean(false)
+    private val mutex = Mutex()
+    private val suScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // 检查 su 是否可用
-    fun isSuAvailable(): Boolean {
-    return try {
-        val process = Runtime.getRuntime().exec("su")
-        process.isAlive
-    } catch (e: Exception) {
-        false
-    }
-}
-    // 初始化 su 进程
+    // 初始化su（协程友好）
     private suspend fun initSu(): Boolean {
-        return mutex.withLock {  // 确保此方法在同一时间内只能有一个协程访问
-            try {
-                if (process == null) {
-                    process = Runtime.getRuntime().exec("su")
-                    outputStream = DataOutputStream(process!!.outputStream)
-                    inputStream = BufferedReader(InputStreamReader(process!!.inputStream))
-                    errorStream = BufferedReader(InputStreamReader(process!!.errorStream))
-                }
-                process != null
+        if (initialized.get()) return true
+
+        return mutex.withLock {
+            if (initialized.get()) return true
+            return try {
+                process = Runtime.getRuntime().exec("su")
+                outputStream = DataOutputStream(process!!.outputStream)
+                inputStream = BufferedReader(InputStreamReader(process!!.inputStream))
+                errorStream = BufferedReader(InputStreamReader(process!!.errorStream))
+                initialized.set(true)
+                true
             } catch (e: IOException) {
-                Log.e(TAG, "Failed to start su process", e)
+                Log.e(TAG, "Failed to start su", e)
                 false
             }
         }
     }
 
-    // 执行 su 命令，创建协程
-    fun exec(command: String): String {
-        CoroutineScope(Dispatchers.IO).launch {  // 自动创建协程
-            if (process == null || outputStream == null) {
-                if (!initSu()) return@launch
-            }
+    // 同步执行命令（阻塞）
+    fun exec(command: String, timeout: Long = 3000): String {
+        if (!initialized.get() && !runBlocking { initSu() }) {
+            return "Failed to initialize su"
+        }
 
+        synchronized(this) {
             val result = StringBuilder()
-            val errorResult = StringBuilder()
+            val error = StringBuilder()
+            val endTag = "__END_OF_COMMAND__"
 
             try {
-                outputStream!!.writeBytes("$command\n")
-                outputStream!!.flush()
+                val out = outputStream ?: return "Output stream is null"
+                val `in` = inputStream ?: return "Input stream is null"
+                val err = errorStream ?: return "Error stream is null"
 
-                val timeout = System.currentTimeMillis() + 3000
-                while (System.currentTimeMillis() < timeout) {
-                    if (inputStream?.ready() == true) {
-                        val line = inputStream!!.readLine()
-                        if (line != null) result.append(line).append("\n")
-                    }
-                    if (errorStream?.ready() == true) {
-                        val errorLine = errorStream!!.readLine()
-                        if (errorLine != null) errorResult.append(errorLine).append("\n")
-                    }
+                out.writeBytes("$command\necho $endTag\n")
+                out.flush()
+
+                val endTime = System.currentTimeMillis() + timeout
+                while (System.currentTimeMillis() < endTime) {
+                    val line = `in`.readLine() ?: break
+                    if (line.trim() == endTag) break
+                    result.appendLine(line)
                 }
 
-                if (errorResult.isNotEmpty()) {
-                    Log.e(TAG, "Shell Error: $errorResult")
+                while (System.currentTimeMillis() < endTime && err.ready()) {
+                    val line = err.readLine() ?: break
+                    error.appendLine(line)
+                }
+
+                if (error.isNotEmpty()) {
+                    Log.e(TAG, "Error: ${error.trim()}")
                 }
 
             } catch (e: Exception) {
-                Log.e(TAG, "Error executing command: $command", e)
+                Log.e(TAG, "Exec exception", e)
+                return "Error: ${e.message}"
             }
 
-            Log.d(TAG, "Command result: ${result.toString().trim()}")
+            return result.toString().trim()
+        }
+    }
+
+    // 异步执行命令（返回Deferred）
+    fun execAsync(command: String, waitForResult: Boolean = false, timeout: Long = 3000): Deferred<String> {
+        return suScope.async {
+            if (!initSu()) return@async "Failed to initialize su"
+            executeCommand(command, waitForResult, timeout)
+        }
+    }
+
+    // 异步执行 + 回调
+    fun execAsyncWithCallback(
+        command: String,
+        dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
+        timeout: Long = 3000,
+        callback: (String) -> Unit
+    ): Job {
+        return suScope.launch(dispatcher) {
+            val result = execAsync(command, true, timeout).await()
+            callback(result)
+        }
+    }
+
+    // 内部实际执行逻辑
+    private suspend fun executeCommand(command: String, waitForResult: Boolean, timeout: Long): String {
+        return mutex.withLock {
+            val result = StringBuilder()
+            val error = StringBuilder()
+
+            try {
+                outputStream?.writeBytes("$command\n")
+                outputStream?.flush()
+            } catch (e: Exception) {
+                Log.e(TAG, "ExecAsync exception during command write", e)
+                return@withLock "Error: ${e.message}"
+            }
+
+            if (waitForResult) {
+                try {
+                    withTimeoutOrNull(timeout) {
+                        readStreamOutput(result, error)
+                    }
+                    if (error.isNotEmpty()) {
+                        Log.e(TAG, "Error: ${error.trim()}")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "ExecAsync exception during read", e)
+                    return@withLock "Error: ${e.message}"
+                }
+            }
+
+            result.toString().trim()
+        }
+    }
+
+    // 封装输出读取（标准输出 & 错误输出）
+    private suspend fun readStreamOutput(result: StringBuilder, error: StringBuilder) = coroutineScope {
+        val input = inputStream
+        val err = errorStream
+        if (input == null || err == null) return@coroutineScope
+
+        val job1 = launch {
+            try {
+                while (isActive) {
+                    val line = input.readLine() ?: break
+                    result.appendLine(line)
+                    yield()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error reading stdout", e)
+            }
         }
 
-        return "Command is being executed"
+        val job2 = launch {
+            try {
+                while (isActive) {
+                    val line = err.readLine() ?: break
+                    error.appendLine(line)
+                    yield()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error reading stderr", e)
+            }
+        }
+
+        joinAll(job1, job2)
     }
 
     // 关闭 su 进程
-    suspend fun close() {
-        mutex.withLock {
+    fun close() {
+        synchronized(this) {
             try {
                 outputStream?.writeBytes("exit\n")
                 outputStream?.flush()
+            } catch (_: IOException) {
+            }
+
+            try {
                 outputStream?.close()
                 inputStream?.close()
                 errorStream?.close()
                 process?.destroy()
             } catch (e: IOException) {
-                Log.e(TAG, "Error closing su process", e)
+                Log.e(TAG, "Error closing su", e)
             } finally {
-                process = null
                 outputStream = null
                 inputStream = null
                 errorStream = null
+                process = null
+                initialized.set(false)
+                suScope.cancel()
             }
+        }
+    }
+
+    // 检查是否有 su 权限
+    fun isSuAvailable(): Boolean {
+        return try {
+            val proc = Runtime.getRuntime().exec("su")
+            proc.destroy()
+            true
+        } catch (e: Exception) {
+            false
         }
     }
 }
