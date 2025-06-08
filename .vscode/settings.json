@@ -1,0 +1,8 @@
+{
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "files.associations": {
+        "fstream": "cpp",
+        "ostream": "cpp",
+        "istream": "cpp"
+    }
+}
