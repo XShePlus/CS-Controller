@@ -23,290 +23,362 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
-import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.TextView
 import android.widget.Toast
+import com.topjohnwu.superuser.Shell
 import io.github.xsheeee.cs_controller.tools.ConfigManager
 import io.github.xsheeee.cs_controller.tools.ConfigManager.ConfigData
 import io.github.xsheeee.cs_controller.tools.Logger
 import io.github.xsheeee.cs_controller.tools.Values
 import java.io.File
-import java.util.Date
-import java.util.Timer
-import java.util.TimerTask
+import java.io.FileReader
+import java.io.FileWriter
+import java.io.BufferedReader
+import java.io.BufferedWriter
+import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.*
 
 class MyAccessibilityService : AccessibilityService() {
+    // 核心组件
     private var windowManager: WindowManager? = null
     private var floatingView: View? = null
-    private var handler: Handler? = null
-    private var previousWindow = "未知"
     private var notificationManager: NotificationManager? = null
-    private var appModeMap: MutableMap<String, String> = HashMap()
-    private var defaultMode = "fast"
-    private var currentMode = defaultMode
-    private var configObserver: FileObserver? = null
-    private val cachedDesktopApps: MutableSet<String> = HashSet()
 
-    private var floatingWindowEnabled = true
-    private val floatingWindowLogicEnabled = true
-    private var isServiceInitialized = false
+    // 主线程Handler
+    private val mainHandler = Handler(Looper.getMainLooper())
 
+    // 协程作用域
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val backgroundScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    // 状态管理
+    private val isServiceInitialized = AtomicBoolean(false)
+    private val serviceIsConnected = AtomicBoolean(false)
+
+    // 应用配置
     private var configData: ConfigData? = null
+    @Volatile private var appModeMap: MutableMap<String, String> = HashMap()
+    @Volatile private var defaultMode = "fast"
+    @Volatile private var currentMode = defaultMode
+    @Volatile private var floatingWindowEnabled = true
+    private val floatingWindowLogicEnabled = true
 
-    // 屏幕相关
-    private var displayWidth = 1080
-    private var displayHeight = 2340
-    private var isLandscape = false
-    private var isTablet = false
+    // 文件观察器
+    private var configObserver: FileObserver? = null
 
-    // 输入法列表
-    private var inputMethods = ArrayList<String>()
-
-    // 桌面包名列表
+    // 窗口和应用状态
+    @Volatile private var previousWindow = "未知"
     private val launcherPackages = mutableSetOf<String>()
+    private val inputMethods = mutableSetOf<String>()
 
-    // 窗口id缓存
-    private val windowIdCaches = LruCache<Int, String>(10)
-    
-    // 轮询定时器
-    private var pollingTimer: Timer? = null 
-    private var lastEventTime: Long = 0
-    private var lastWindowChanged: Long = 0 // 记录最后一次窗口变化的时间
-    private val pollingTimeout: Long = 7000
-    private val pollingInterval: Long = 3000
-    
-    // 记录服务是否已连接
-    private var serviceIsConnected = false
-    
-    // 用于记录最后分析线程时间
+    // 屏幕信息
+    @Volatile private var displayWidth = 1080
+    @Volatile private var displayHeight = 2340
+    @Volatile private var isLandscape = false
+    @Volatile private var isTablet = false
+
+    // 缓存优化
+    private val windowIdCaches = LruCache<Int, String>(20)
+
+    // 事件时间戳管理
+    private val lastEventTime = AtomicLong(0)
+    private val lastWindowChanged = AtomicLong(0)
+    private val lastAnalyseThread = AtomicLong(0)
+
+    // 轮询管理
+    private var pollingJob: Job? = null
+    private val pollingTimeout = 7000L
+    private val pollingInterval = 3000L
+
+    // 黑名单窗口类型
+    private val blackTypeList = setOf(
+        AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY,
+        AccessibilityWindowInfo.TYPE_INPUT_METHOD,
+        AccessibilityWindowInfo.TYPE_SPLIT_SCREEN_DIVIDER,
+        AccessibilityWindowInfo.TYPE_SYSTEM
+    )
+
+    private val blackTypeListBasic = setOf(
+        AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY,
+        AccessibilityWindowInfo.TYPE_INPUT_METHOD,
+        AccessibilityWindowInfo.TYPE_SPLIT_SCREEN_DIVIDER
+    )
+
     companion object {
-        private var lastAnalyseThread: Long = 0
         private const val TAG = "Accessibility"
         private const val CHANNEL_ID = "cs_controller_channel"
         private const val NOTIFICATION_ID = 1
+
+        // 防抖动相关常量
+        private const val DEBOUNCE_DELAY = 100L
+        private const val MIN_WINDOW_CHANGE_INTERVAL = 500L
     }
 
-    private fun updateCSConfig(mode: String) {
-        try {
-            // 详细记录日志，便于调试
-            Log.d(TAG, "updateCSConfig调用: 请求模式=$mode, 当前模式=$currentMode")
-            
-            // 只有当模式发生变化时才写入文件
-            if (mode != currentMode) {
-                Log.d(TAG, "模式变化: $currentMode -> $mode, 准备写入文件")
-                try {
-                    // 使用JNI方法写入文件，替代FileWriter
-                    val success = io.github.xsheeee.cs_controller.tools.FileUtils.writeToFile(Values.CSConfigPath, mode)
-                    if (success) {
-                        Log.d(TAG, "CS config成功写入(JNI): $mode")
-                        // 更新当前模式变量
-                        currentMode = mode
-                    } else {
-                        logError("文件写入失败: 使用JNI方法", "E")
-                    }
-                } catch (e: Exception) {
-                    logError("文件写入异常: ${e.message}", "E")
+    // 使用 java.io 的文件操作工具方法
+    private fun writeToFile(filePath: String, content: String): Boolean {
+        return try {
+            val file = File(filePath)
+            // 确保父目录存在
+            file.parentFile?.let { parent ->
+                if (!parent.exists()) {
+                    parent.mkdirs()
                 }
             }
-        } catch (e: Exception) {
-            logError("updateCSConfig异常: ${e.message}", "E")
-        }
-    }
 
-    /**
-     * 加载应用配置文件
-     * 读取配置中的应用模式映射、默认模式和悬浮窗设置
-     */
-    private fun loadAppConfig() {
-        configData = ConfigManager.loadConfig(Values.appConfig)
-        appModeMap = configData?.appModeMap as MutableMap<String, String>
-        defaultMode = configData!!.defaultMode
-        floatingWindowEnabled = configData!!.floatingWindowEnabled
-
-        // 尝试读取CS配置文件，获取当前模式的初始值
-        try {
-            val storedMode = io.github.xsheeee.cs_controller.tools.FileUtils.readFromFile(Values.CSConfigPath)
-            if (storedMode.isNotEmpty()) {
-                currentMode = storedMode
-                Log.d(TAG, "从文件读取当前模式: $currentMode")
-            } else {
-                currentMode = defaultMode
-                Log.d(TAG, "CS配置文件为空，使用默认模式: $defaultMode")
+            BufferedWriter(FileWriter(file)).use { writer ->
+                writer.write(content)
+                writer.flush()
             }
+            true
+        } catch (e: IOException) {
+            Logger.e(TAG, "写入文件失败: ${e.message}")
+            false
         } catch (e: Exception) {
-            currentMode = defaultMode
-            logError("读取CS配置文件失败，使用默认模式: $defaultMode, 错误: ${e.message}", "E")
+            Logger.e(TAG, "写入文件异常: ${e.message}")
+            false
         }
-
-        updateFloatingWindowState()
     }
 
-    /**
-     * 初始化服务
-     * 设置基本组件、加载配置、初始化界面等
-     */
+    private fun readFromFile(filePath: String): String {
+        return try {
+            val file = File(filePath)
+            if (!file.exists()) {
+                return ""
+            }
+
+            BufferedReader(FileReader(file)).use { reader ->
+                reader.readText()
+            }
+        } catch (e: IOException) {
+            Logger.e(TAG, "读取文件失败: ${e.message}")
+            ""
+        } catch (e: Exception) {
+            Logger.e(TAG, "读取文件异常: ${e.message}")
+            ""
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
-        try {
-            initializeService()
-        } catch (e: Exception) {
-            logError("Service initialization failed: " + e.message, "E")
-            // 延迟3秒后重试初始化
-            if (handler != null) {
-                handler!!.postDelayed({ this.initializeService() }, 3000)
-            } else {
-                handler = Handler(Looper.getMainLooper())
-                handler!!.postDelayed({ this.initializeService() }, 3000)
-            }
-        }
+        initializeService()
     }
 
     private fun initializeService() {
-        if (isServiceInitialized) {
-            return
-        }
+        if (isServiceInitialized.get()) return
 
-        try {
-            handler = Handler(Looper.getMainLooper())
-            windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-            notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        serviceScope.launch {
+            try {
+                // 初始化基础组件
+                initializeBasicComponents()
 
-            // 获取屏幕相关信息
-            getDisplaySize()
-            onScreenConfigurationChanged(resources.configuration)
+                // 获取屏幕信息
+                updateDisplayInfo()
 
-            // 初始化桌面包名列表
-            initLauncherPackages()
+                // 并行执行初始化任务
+                val jobs = listOf(
+                    async { initLauncherPackages() },
+                    async { loadInputMethods() },
+                    async { createRequiredDirectories() },
+                    async { loadAppConfig() }
+                )
 
-            // 创建必要的目录
-            createRequiredDirectories()
+                // 等待所有异步任务完成
+                jobs.awaitAll()
 
-            // 加载配置
-            loadAppConfig()
-            
-            setupConfigObserver()
-            showNotification()
-            checkOverlayPermission()
+                // 完成初始化
+                setupConfigObserver()
+                showNotification()
+                checkOverlayPermissionAsync()
 
-            // 获取输入法
-            Thread {
-                inputMethods = getInputMethods()
-            }.start()
+                isServiceInitialized.set(true)
+                Logger.d(TAG, "Service initialized successfully")
 
-            isServiceInitialized = true
-            Log.d(TAG, "Service initialized successfully")
-        } catch (e: Exception) {
-            logError("Failed to initialize service: " + e.message, "E")
-            handler!!.postDelayed({ this.initializeService() }, 3000)
-        }
-    }
-
-    // 获取输入法列表
-    private fun getInputMethods(): ArrayList<String> {
-        val inputMethodList = ArrayList<String>()
-        try {
-            val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE)
-            val method = inputMethodManager.javaClass.getMethod("getInputMethodList")
-            val inputMethodInfos = method.invoke(inputMethodManager) as List<*>
-            
-            for (imi in inputMethodInfos) {
-                val packageName = imi?.javaClass?.getMethod("getPackageName")!!.invoke(imi) as String
-                inputMethodList.add(packageName)
-                Log.d(TAG, "Input method detected: $packageName")
+            } catch (e: Exception) {
+                Logger.e(TAG, "Service initialization failed: ${e.message}")
+                // 延迟重试初始化
+                delay(3000)
+                if (!isServiceInitialized.get()) {
+                    initializeService()
+                }
             }
-        } catch (e: Exception) {
-            logError("Error getting input methods: " + e.message, "E")
         }
-        return inputMethodList
     }
 
-    // 屏幕配置变化
+    private fun initializeBasicComponents() {
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    }
+
+    private fun updateCSConfig(mode: String) {
+        if (mode == currentMode) return
+
+        backgroundScope.launch {
+            try {
+                Logger.d(TAG, "模式变化: $currentMode -> $mode")
+                val success = writeToFile(Values.CSConfigPath, mode)
+                if (success) {
+                    currentMode = mode
+                    Logger.d(TAG, "CS config成功写入: $mode")
+                } else {
+                    Logger.e(TAG, "文件写入失败")
+                }
+            } catch (e: Exception) {
+                Logger.e(TAG, "updateCSConfig异常: ${e.message}")
+            }
+        }
+    }
+
+    private suspend fun loadAppConfig() {
+        withContext(Dispatchers.IO) {
+            try {
+                configData = ConfigManager.loadConfig(Values.appConfig)
+                configData?.let { config ->
+                    appModeMap = config.appModeMap as MutableMap<String, String>
+                    defaultMode = config.defaultMode
+                    floatingWindowEnabled = config.floatingWindowEnabled
+
+                    // 读取当前模式
+                    val storedMode = readFromFile(Values.CSConfigPath)
+                    currentMode = if (storedMode.isNotEmpty()) storedMode else defaultMode
+
+                    Logger.d(TAG, "配置加载完成，当前模式: $currentMode")
+                }
+
+                // 在主线程更新UI
+                withContext(Dispatchers.Main) {
+                    updateFloatingWindowState()
+                }
+            } catch (e: Exception) {
+                Logger.e(TAG, "配置加载失败: ${e.message}")
+                currentMode = defaultMode
+            }
+        }
+    }
+
+    private suspend fun loadInputMethods() {
+        withContext(Dispatchers.IO) {
+            try {
+                val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE)
+                val method = inputMethodManager.javaClass.getMethod("getInputMethodList")
+                val inputMethodInfos = method.invoke(inputMethodManager) as List<*>
+
+                val newInputMethods = mutableSetOf<String>()
+                for (imi in inputMethodInfos) {
+                    val packageName = imi?.javaClass?.getMethod("getPackageName")?.invoke(imi) as? String
+                    packageName?.let { newInputMethods.add(it) }
+                }
+
+                synchronized(inputMethods) {
+                    inputMethods.clear()
+                    inputMethods.addAll(newInputMethods)
+                }
+
+                Logger.d(TAG, "输入法加载完成: ${inputMethods.size}个")
+            } catch (e: Exception) {
+                Logger.e(TAG, "输入法加载失败: ${e.message}")
+            }
+        }
+    }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        onScreenConfigurationChanged(newConfig)
+        updateScreenConfiguration(newConfig)
+        updateDisplayInfo()
     }
 
-    // 处理屏幕配置变化
-    private fun onScreenConfigurationChanged(newConfig: Configuration) {
-        if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT) {
-            isLandscape = false
-        } else if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            isLandscape = true
-        }
-        getDisplaySize()
+    private fun updateScreenConfiguration(newConfig: Configuration) {
+        isLandscape = newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE
     }
 
-    // 获取屏幕大小
-    @Suppress("DEPRECATION")
-    private fun getDisplaySize() {
+    private fun updateDisplayInfo() {
         try {
             val wm = getSystemService(WINDOW_SERVICE) as WindowManager
             val point = Point()
             wm.defaultDisplay.getRealSize(point)
+
             if (point.x != displayWidth || point.y != displayHeight) {
                 displayWidth = point.x
                 displayHeight = point.y
+                Logger.d(TAG, "屏幕尺寸更新: ${displayWidth}x${displayHeight}")
             }
 
-            isTablet = resources.configuration.screenLayout and Configuration.SCREENLAYOUT_SIZE_MASK >= Configuration.SCREENLAYOUT_SIZE_LARGE
-            Log.d(TAG, "Screen size: $displayWidth x $displayHeight, isTablet: $isTablet")
+            isTablet = resources.configuration.screenLayout and
+                    Configuration.SCREENLAYOUT_SIZE_MASK >= Configuration.SCREENLAYOUT_SIZE_LARGE
+
         } catch (e: Exception) {
-            logError("Error getting screen size: " + e.message, "E")
-            displayWidth = 1080  // 设置一个默认值
-            displayHeight = 2340 // 设置一个默认值
+            Logger.e(TAG, "获取屏幕尺寸失败: ${e.message}")
         }
     }
 
-    // 初始化桌面包名列表
-    private fun initLauncherPackages() {
-        val intent = Intent(Intent.ACTION_MAIN)
-        intent.addCategory(Intent.CATEGORY_HOME)
-        val resolveInfos = packageManager.queryIntentActivities(intent, 0)
-        for (resolveInfo in resolveInfos) {
-            resolveInfo.activityInfo?.packageName?.let { packageName ->
-                launcherPackages.add(packageName)
-                Log.d(TAG, "Launcher package detected: $packageName")
+    private suspend fun initLauncherPackages() {
+        withContext(Dispatchers.IO) {
+            try {
+                val intent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_HOME)
+                }
+
+                val resolveInfos = packageManager.queryIntentActivities(intent, 0)
+                val newLauncherPackages = mutableSetOf<String>()
+
+                for (resolveInfo in resolveInfos) {
+                    resolveInfo.activityInfo?.packageName?.let { packageName ->
+                        newLauncherPackages.add(packageName)
+                    }
+                }
+
+                // 添加系统包名
+                val systemPackages = setOf(
+                    "com.android.systemui", "android", "com.android.settings.overlay",
+                    "com.android.phone", "com.android.incallui", "com.android.server.telecom"
+                )
+                newLauncherPackages.addAll(systemPackages)
+
+                synchronized(launcherPackages) {
+                    launcherPackages.clear()
+                    launcherPackages.addAll(newLauncherPackages)
+                }
+
+                Logger.d(TAG, "桌面包名加载完成: ${launcherPackages.size}个")
+            } catch (e: Exception) {
+                Logger.e(TAG, "桌面包名加载失败: ${e.message}")
             }
         }
-
-        // 一些常见的系统UI包名，这些通常不应被视为前台应用
-        val systemPackages = listOf(
-            "com.android.systemui",
-            "android",
-            "com.android.settings.overlay",
-            "com.android.phone",
-            "com.android.incallui",
-            "com.android.server.telecom"
-        )
-        systemPackages.forEach { launcherPackages.add(it) }
     }
 
-    private fun createRequiredDirectories() {
-        try {
-            val configParent = File(Values.appConfig).parentFile
-
-            if (configParent != null && !configParent.exists()) {
-                val created = configParent.mkdirs()
-                Log.d(TAG, "Config parent directory created: $created")
+    private suspend fun createRequiredDirectories() {
+        withContext(Dispatchers.IO) {
+            try {
+                val configParent = File(Values.appConfig).parentFile
+                if (configParent != null && !configParent.exists()) {
+                    // 先尝试使用 java.io 创建目录
+                    val created = configParent.mkdirs()
+                    if (!created) {
+                        // 如果普通方式失败，再尝试使用 root 权限
+                        Shell.getShell { shell ->
+                            if (shell.isRoot) {
+                                shell.newJob()
+                                    .add("mkdir -p ${configParent.absolutePath}")
+                                    .exec()
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Logger.e(TAG, "创建目录失败: ${e.message}")
             }
-        } catch (e: Exception) {
-            logError("Error creating directories: " + e.message, "E")
-            throw e
         }
     }
 
     private fun updateFloatingWindowState() {
-        try {
-            if (floatingWindowEnabled && floatingWindowLogicEnabled) {
-                if (floatingView == null) {
-                    createFloatingWindow()
-                }
-            } else {
-                removeFloatingWindow()
+        if (floatingWindowEnabled && floatingWindowLogicEnabled) {
+            if (floatingView == null) {
+                createFloatingWindow()
             }
-        } catch (e: Exception) {
-            logError("Error updating floating window state: " + e.message, "E")
+        } else {
+            removeFloatingWindow()
         }
     }
 
@@ -318,33 +390,33 @@ class MyAccessibilityService : AccessibilityService() {
 
         try {
             floatingView = LayoutInflater.from(this).inflate(R.layout.floating_window, null)
-            val params =
-                WindowManager.LayoutParams(
-                    WindowManager.LayoutParams.MATCH_PARENT,
-                    WindowManager.LayoutParams.WRAP_CONTENT,
-                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                    (WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                            or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                            or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                            or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED),
-                    -3
-                )
-            params.gravity = Gravity.TOP
-            params.alpha = 0.8f
+            val params = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                (WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                        or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                        or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED),
+                -3
+            ).apply {
+                gravity = Gravity.TOP
+                alpha = 0.8f
+            }
 
-            windowManager!!.addView(floatingView, params)
+            windowManager?.addView(floatingView, params)
         } catch (e: Exception) {
-            logError("Error creating floating window: " + e.message, "E")
+            Logger.e(TAG, "创建悬浮窗失败: ${e.message}")
             floatingView = null
         }
     }
 
     private fun removeFloatingWindow() {
-        if (floatingView != null) {
+        floatingView?.let { view ->
             try {
-                windowManager!!.removeView(floatingView)
+                windowManager?.removeView(view)
             } catch (e: Exception) {
-                logError("Error removing floating window: " + e.message, "E")
+                Logger.e(TAG, "移除悬浮窗失败: ${e.message}")
             } finally {
                 floatingView = null
             }
@@ -353,400 +425,292 @@ class MyAccessibilityService : AccessibilityService() {
 
     private fun setupConfigObserver() {
         val configFile = File(Values.appConfig)
-        val configDirectory = configFile.parentFile
+        val configDirectory = configFile.parentFile ?: return
 
-        if (configObserver != null) {
-            configObserver!!.stopWatching()
-        }
+        configObserver?.stopWatching()
 
-        if (configDirectory != null) {
-            configObserver =
-                object : FileObserver(
-                    configDirectory,
-                    (MODIFY
-                            or CREATE
-                            or DELETE
-                            or MOVED_TO)
-                ) {
-                    override fun onEvent(event: Int, path: String?) {
-                        if (path != null && path == configFile.name) {
-                            handler!!.post {
-                                Log.d(TAG, "Config file changed, event: $event")
-                                try {
-                                    loadAppConfig()
-                                } catch (e: Exception) {
-                                    logError("Failed to reload config: " + e.message, "E")
-                                }
-                            }
-                        }
+        configObserver = object : FileObserver(
+            configDirectory,
+            MODIFY or CREATE or DELETE or MOVED_TO
+        ) {
+            override fun onEvent(event: Int, path: String?) {
+                if (path == configFile.name) {
+                    serviceScope.launch {
+                        delay(DEBOUNCE_DELAY) // 防抖动
+                        Logger.d(TAG, "配置文件变化，重新加载")
+                        loadAppConfig()
                     }
                 }
-
-            try {
-                (configObserver as FileObserver).startWatching()
-                Log.d(TAG, "File observer started successfully")
-            } catch (e: Exception) {
-                logError("Failed to start file observer: " + e.message, "E")
-                handler!!.postDelayed({ this.setupConfigObserver() }, 5000)
             }
+        }
+
+        try {
+            configObserver?.startWatching()
+            Logger.d(TAG, "文件观察器启动成功")
+        } catch (e: Exception) {
+            Logger.e(TAG, "文件观察器启动失败: ${e.message}")
         }
     }
 
     private fun getAppMode(packageName: String): String {
-        return configData!!.appModeMap.getOrDefault(packageName, configData!!.defaultMode)
+        return configData?.appModeMap?.get(packageName) ?: configData?.defaultMode ?: defaultMode
     }
 
     override fun onServiceConnected() {
         try {
-            val info = AccessibilityServiceInfo()
-            info.eventTypes = (
-                    AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
-                            or AccessibilityEvent.TYPE_WINDOWS_CHANGED
-                    )
-            info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-
-            // 添加更多的事件类型和标志
-            info.flags = (
-                    AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
-                            or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
-                            or AccessibilityServiceInfo.FLAG_REQUEST_ENHANCED_WEB_ACCESSIBILITY
-                    )
+            val info = AccessibilityServiceInfo().apply {
+                eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
+                        AccessibilityEvent.TYPE_WINDOWS_CHANGED
+                feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
+                flags = AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
+                        AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
+                        AccessibilityServiceInfo.FLAG_REQUEST_ENHANCED_WEB_ACCESSIBILITY
+            }
 
             serviceInfo = info
-            serviceIsConnected = true
-            
-            // 获取屏幕方向
-            onScreenConfigurationChanged(resources.configuration)
-            getDisplaySize()
-            
-            // 服务连接时，主动检测当前前台应用并更新模式
-            handler?.postDelayed({ modernModeEvent() }, 1000)
-            Log.d(TAG, "Service connected successfully")
+            serviceIsConnected.set(true)
+
+            updateDisplayInfo()
+
+            // 延迟检测当前前台应用
+            serviceScope.launch {
+                delay(1000)
+                modernModeEvent()
+            }
+
+            Log.d(TAG, "服务连接成功")
         } catch (e: Exception) {
-            logError("Error in onServiceConnected: " + e.message, "E")
+            Logger.e(TAG, "服务连接失败: ${e.message}")
         }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null) return
+        event ?: return
 
-        // 过滤特定包名
-        val packageName = event.packageName
-        if (packageName?.toString() == "com.omarea.gesture" || packageName?.toString() == "com.omarea.filter") {
-            return
-        }
+        // 过滤特定包名和事件类型
+        val packageName = event.packageName?.toString()
+        if (packageName == "com.omarea.gesture" || packageName == "com.omarea.filter") return
 
-        // 只处理窗口状态变化事件
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED || 
-            event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
-            return
-        }
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED ||
+            event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) return
 
-        // 避免重复处理相同的事件
-        val t = event.eventTime
-        if (t > 0 && t != lastEventTime) {
-            lastEventTime = t
-            lastWindowChanged = System.currentTimeMillis()
+        // 防抖动处理
+        val currentTime = System.currentTimeMillis()
+        val lastTime = lastEventTime.get()
+        if (currentTime - lastTime < MIN_WINDOW_CHANGE_INTERVAL) return
+
+        if (event.eventTime > 0 && lastEventTime.compareAndSet(lastTime, event.eventTime)) {
+            lastWindowChanged.set(currentTime)
             modernModeEvent(event)
         }
     }
-    
-    // 黑名单窗口类型（不应被视为前台应用的窗口类型）
-    private val blackTypeList = arrayListOf(
-        AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY,
-        AccessibilityWindowInfo.TYPE_INPUT_METHOD,
-        AccessibilityWindowInfo.TYPE_SPLIT_SCREEN_DIVIDER,
-        AccessibilityWindowInfo.TYPE_SYSTEM
-    )
 
-    private val blackTypeListBasic = arrayListOf(
-        AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY,
-        AccessibilityWindowInfo.TYPE_INPUT_METHOD,
-        AccessibilityWindowInfo.TYPE_SPLIT_SCREEN_DIVIDER
-    )
-    
-    // 获取有效窗口列表
     private fun getEffectiveWindows(includeSystemApp: Boolean = false): List<AccessibilityWindowInfo> {
-        val windowsList = windows
-        if (windowsList != null && windowsList.size > 1) {
-            val effectiveWindows = windowsList.filter {
-                if (includeSystemApp) {
-                    !blackTypeListBasic.contains(it.type)
+        return try {
+            val windowsList = windows ?: return emptyList()
+            val blackList = if (includeSystemApp) blackTypeListBasic else blackTypeList
+            windowsList.filter { !blackList.contains(it.type) }
+        } catch (e: Exception) {
+            Logger.e(TAG, "获取有效窗口失败: ${e.message}")
+            emptyList()
+        }
+    }
+
+    private fun modernModeEvent(event: AccessibilityEvent? = null) {
+        if (!serviceIsConnected.get()) return
+
+        serviceScope.launch {
+            try {
+                val effectiveWindows = getEffectiveWindows()
+                if (effectiveWindows.isEmpty()) return@launch
+
+                analyzeWindows(effectiveWindows, event)
+
+                if (event != null) {
+                    startActivityPolling()
+                }
+            } catch (e: Exception) {
+                Logger.e(TAG, "modernModeEvent异常: ${e.message}")
+            }
+        }
+    }
+
+    private suspend fun analyzeWindows(effectiveWindows: List<AccessibilityWindowInfo>, event: AccessibilityEvent?) {
+        // 检查是否有焦点窗口
+        if (effectiveWindows.none { it.isActive || it.isFocused }) return
+
+        var bestWindow: AccessibilityWindowInfo? = null
+        var bestWindowSize = 0
+        var bestWindowFocused = false
+
+        val minWindowSize = calculateMinWindowSize()
+        val debugInfo = StringBuilder().apply {
+            append("屏幕: ${displayHeight}x${displayWidth}")
+            append(if (isLandscape) " 横向" else " 竖向")
+            if (isTablet) append(" Tablet")
+            append("\n")
+            event?.let { append("事件: ${it.source?.packageName}\n") }
+                ?: append("事件: 主动轮询\n")
+        }
+
+        // 分析每个窗口
+        for (window in effectiveWindows) {
+            val outBounds = Rect()
+            window.getBoundsInScreen(outBounds)
+            val windowFocused = window.isActive || window.isFocused
+            val windowSize = (outBounds.right - outBounds.left) * (outBounds.bottom - outBounds.top)
+
+            val packageName = try {
+                window.root?.packageName
+            } catch (e: Exception) {
+                null
+            }
+
+            debugInfo.append("\n层级: ${window.layer} $packageName Focused: $windowFocused")
+            debugInfo.append("\n类型: ${window.type} Rect[${outBounds.left},${outBounds.top},${outBounds.right},${outBounds.bottom}]")
+
+            // 选择最佳窗口的逻辑
+            val shouldSelectWindow = if (isLandscape) {
+                windowSize >= bestWindowSize
+            } else {
+                if (bestWindowFocused && !windowFocused) {
+                    false
                 } else {
-                    !blackTypeList.contains(it.type)
+                    windowSize >= bestWindowSize || (windowFocused && !bestWindowFocused)
                 }
             }
-            return effectiveWindows
+
+            if (shouldSelectWindow) {
+                bestWindow = window
+                bestWindowSize = windowSize
+                bestWindowFocused = windowFocused
+            }
         }
-        return ArrayList()
+
+        // 处理最佳窗口
+        bestWindow?.let { window ->
+            if (bestWindowSize >= minWindowSize) {
+                processSelectedWindow(window, event, debugInfo)
+            }
+        }
     }
-    
-    // 获取所有前台应用包名
-    private fun getForegroundApps(): Array<String> {
-        val windows = this.getEffectiveWindows(true)
-        return windows.map {
-            it.root?.packageName
-        }.filter { it != null && it != "com.android.systemui" }.map { it.toString() }.toTypedArray()
+
+    private fun calculateMinWindowSize(): Int {
+        return if (isLandscape && !isTablet) {
+            displayHeight * displayWidth / 2
+        } else {
+            (displayHeight * displayWidth * 8) / 10
+        }
     }
-    
-    /**
-     * 新的前台应用检测逻辑
-     * 分析窗口信息找出当前前台应用并更新模式
-     * @param event 触发检测的辅助功能事件，可为null
-     */
-    private fun modernModeEvent(event: AccessibilityEvent? = null) {
-        val effectiveWindows = this.getEffectiveWindows()
 
-        if (effectiveWindows.isNotEmpty()) {
-            try {
-                var lastWindow: AccessibilityWindowInfo? = null
-                // 最小窗口分辨率要求
-                val minWindowSize = if (isLandscape && !isTablet) {
-                    // 横屏时关注窗口大小，以显示区域大的主应用（平板设备不过滤窗口大小）
-                    // 屏幕一半大小，用于判断窗口是否是小窗（比屏幕一半大小小的的应用认为是窗口化运行）
-                    displayHeight * displayWidth / 2
-                } else {
-                    (displayHeight * displayWidth * 8) / 10
-                }
+    private suspend fun processSelectedWindow(
+        window: AccessibilityWindowInfo,
+        event: AccessibilityEvent?,
+        debugInfo: StringBuilder
+    ) {
+        val currentAnalyseTime = System.currentTimeMillis()
+        lastAnalyseThread.set(currentAnalyseTime)
 
-                // 构建日志信息
-                val logs = StringBuilder()
-                logs.append("屏幕: ${displayHeight}x${displayWidth}")
-                if (isLandscape) {
-                    logs.append(" 横向")
-                } else {
-                    logs.append(" 竖向")
-                }
-                if (isTablet) {
-                    logs.append(" Tablet")
-                }
-                logs.append("\n")
-                if (event != null) {
-                    logs.append("事件: ${event.source?.packageName}\n")
-                } else {
-                    logs.append("事件: 主动轮询${Date().time / 1000}\n")
-                }
+        // 异步分析窗口
+        val packageName = withContext(Dispatchers.IO) {
+            analyzeWindowPackage(window, currentAnalyseTime)
+        }
 
-                var lastWindowSize = 0
-                var lastWindowFocus = false
-
-                // 无焦点窗口（一般处于过渡动画或窗口切换过程中）
-                if (effectiveWindows.find { it.isActive || it.isFocused } == null) {
-                    return
-                }
-
-                // 遍历所有有效窗口，找出最可能是前台应用的窗口
-                for (window in effectiveWindows) {
-                    if (isLandscape) {
-                        // 横屏模式下的窗口处理逻辑
-                        val outBounds = Rect()
-                        window.getBoundsInScreen(outBounds)
-
-                        val windowFocused = (window.isActive || window.isFocused)
-
-                        val wp = try {
-                            window.root?.packageName
-                        } catch (ex: java.lang.Exception) {
-                            null
-                        }
-                        logs.append("\n层级: ${window.layer} $wp Focused：${windowFocused}\n类型: ${window.type} Rect[${outBounds.left},${outBounds.top},${outBounds.right},${outBounds.bottom}]")
-
-                        // 计算窗口面积，选择最大的窗口
-                        val size = (outBounds.right - outBounds.left) * (outBounds.bottom - outBounds.top)
-                        if (size >= lastWindowSize) {
-                            lastWindow = window
-                            lastWindowSize = size
-                        }
-                    } else {
-                        // 竖屏模式下的窗口处理逻辑
-                        val windowFocused = (window.isActive || window.isFocused)
-
-                        val outBounds = Rect()
-                        window.getBoundsInScreen(outBounds)
-
-                        val wp = try {
-                            window.root?.packageName
-                        } catch (ex: java.lang.Exception) {
-                            null
-                        }
-                        logs.append("\n层级: ${window.layer} $wp Focused：${windowFocused}\n类型: ${window.type} Rect[${outBounds.left},${outBounds.top},${outBounds.right},${outBounds.bottom}]")
-
-                        // 如果已经找到了有焦点的窗口，则跳过无焦点的窗口
-                        if (lastWindowFocus && !windowFocused) {
-                            continue
-                        }
-
-                        // 计算窗口面积，在相同焦点状态下选择最大的窗口
-                        val size = (outBounds.right - outBounds.left) * (outBounds.bottom - outBounds.top)
-                        if (size >= lastWindowSize || (windowFocused && !lastWindowFocus)) {
-                            lastWindow = window
-                            lastWindowSize = size
-                            lastWindowFocus = windowFocused
-                        }
-                    }
-                }
-                logs.append("\n")
-                
-                if (lastWindow != null && lastWindowSize >= minWindowSize) {
-                    // 使用窗口分析
-                    lastAnalyseThread = System.currentTimeMillis()
-                    windowAnalyse(lastWindow, lastAnalyseThread)
-                    
-                    // 获取当前窗口的包名
-                    val eventWindowId = event?.windowId
-                    val lastWindowId = lastWindow.id
-
-                    val wp = if (eventWindowId == lastWindowId) {
-                        event.packageName
-                    } else {
-                        try {
-                            lastWindow.root.packageName
-                        } catch (ex: java.lang.Exception) {
-                            null
-                        }
-                    }
-                    
-                    // MIUI 优化，打开MIUI多任务界面时当做没有发生应用切换
-                    if (wp?.equals("com.miui.home") == true) {
-                        val node = lastWindow.root?.findAccessibilityNodeInfosByViewId("com.miui.home:id/txtSmallWindowContainer")?.firstOrNull()
-                        if (node != null) {
-                            return
-                        }
-                    }
-                    
-                    if (wp != null) {
-                        logs.append("\n此前: $previousWindow")
-                        val pa = wp.toString()
-                        if (!(isLandscape && inputMethods.contains(pa))) {
-                            if (pa != previousWindow) {
-                                // 应用切换，需要更新模式
-                                previousWindow = pa
-                                if (pa != "未知") {
-                                    val newMode = getAppMode(pa)
-                                    Log.d(TAG, "应用切换: $pa, 模式: $newMode")
-                                    updateCSConfig(newMode)
-                                }
-                            }
-                            // 移除不必要的模式更新检查，避免冗余调用
-                        }
-                        if (event != null) {
-                            startActivityPolling()
-                        }
-                    }
-
-                    // 获取前台应用列表用于调试
-                    val foregroundApps = getForegroundApps()
-                    if (foregroundApps.isNotEmpty()) {
-                        logs.append("\n前台应用: ${foregroundApps.joinToString()}")
-                    }
-
-                    logs.append("\n现在: $previousWindow")
-                    logs.append("\n当前模式: $currentMode")
-                    updateFloatingWindow(logs.toString())
-                }
-            } catch (ex: Exception) {
-                logError("Error in modernModeEvent: " + ex.message, "E")
+        packageName?.let { pkg ->
+            // MIUI优化检查
+            if (pkg == "com.miui.home" && isMiuiTaskSwitcher(window)) {
                 return
             }
+
+            debugInfo.append("\n此前: $previousWindow")
+
+            if (shouldUpdateMode(pkg)) {
+                previousWindow = pkg
+                val newMode = getAppMode(pkg)
+                Log.d(TAG, "应用切换: $pkg, 模式: $newMode")
+                updateCSConfig(newMode)
+            }
+
+            debugInfo.append("\n现在: $previousWindow")
+            debugInfo.append("\n当前模式: $currentMode")
+
+            updateFloatingWindow(debugInfo.toString())
         }
     }
 
-    private fun windowAnalyse(windowInfo: AccessibilityWindowInfo, tid: Long) {
-        Thread {
-            var root: AccessibilityNodeInfo? = null
-            val windowId = windowInfo.id
-            val wp = (try {
-                // 尝试从缓存中获取窗口包名
-                val cache = windowIdCaches.get(windowId)
-                if (cache == null) {
-                    // 如果当前window锁属的APP处于未响应状态，此过程可能会等待5秒后超时返回null，因此需要在线程中异步进行此操作
-                    root = (try {
-                        windowInfo.root
-                    } catch (ex: Exception) {
-                        null
-                    })
-                    root?.packageName.apply {
-                        if (this != null) {
-                            windowIdCaches.put(windowId, toString())
-                        }
-                    }
+    private suspend fun analyzeWindowPackage(window: AccessibilityWindowInfo, analyzeTime: Long): String? {
+        return try {
+            val windowId = window.id
+
+            // 先检查缓存
+            windowIdCaches.get(windowId)?.let { return it }
+
+            // 获取窗口包名（可能耗时）
+            val root = withContext(Dispatchers.IO) {
+                try {
+                    window.root
+                } catch (e: Exception) {
+                    null
+                }
+            }
+
+            val packageName = root?.packageName?.toString()
+
+            // 只有在分析任务仍然有效时才返回结果
+            if (lastAnalyseThread.get() == analyzeTime && packageName != null) {
+                windowIdCaches.put(windowId, packageName)
+                packageName
+            } else null
+
+        } catch (e: Exception) {
+            Logger.e(TAG, "窗口分析失败: ${e.message}")
+            null
+        }
+    }
+
+    private fun isMiuiTaskSwitcher(window: AccessibilityWindowInfo): Boolean {
+        return try {
+            if (!window.isFocused) return true
+            val root = window.root
+            val node = root?.findAccessibilityNodeInfosByViewId("com.miui.home:id/txtSmallWindowContainer")?.firstOrNull()
+            node != null
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun shouldUpdateMode(packageName: String): Boolean {
+        return !(isLandscape && inputMethods.contains(packageName)) &&
+                packageName != previousWindow &&
+                packageName != "未知"
+    }
+
+    private fun startActivityPolling() {
+        pollingJob?.cancel()
+
+        pollingJob = serviceScope.launch {
+            lastEventTime.set(System.currentTimeMillis())
+
+            while (isActive) {
+                delay(pollingInterval)
+
+                val interval = System.currentTimeMillis() - lastEventTime.get()
+                if (interval > pollingTimeout) {
+                    break
                 } else {
-                    cache
+                    modernModeEvent()
                 }
-            } catch (ex: Exception) {
-                null
-            })
-            
-            // MIUI 优化，打开MIUI多任务界面时当做没有发生应用切换
-            if (wp?.equals("com.miui.home") == true) {
-                // 手势滑动过程中，桌面面处于非Focused状态
-                if (!windowInfo.isFocused) {
-                    return@Thread
-                }
-                
-                val node = root?.findAccessibilityNodeInfosByViewId("com.miui.home:id/txtSmallWindowContainer")?.firstOrNull()
-                if (node != null) {
-                    return@Thread
-                }
-            }
-
-            // 确认分析结果有效且是最新的分析任务
-            if (lastAnalyseThread == tid && wp != null) {
-                val pa = wp.toString()
-                if (!(isLandscape && inputMethods.contains(pa)) && pa != previousWindow) {
-                    previousWindow = pa
-                    if (pa != "未知") {
-                        val newMode = getAppMode(pa)
-                        Log.d(TAG, "窗口分析检测到应用切换: $pa, 模式: $newMode")
-                        updateCSConfig(newMode)
-                    }
-                }
-            }
-        }.start()
-    }
-    
-    // 启动活动轮询
-    private fun startActivityPolling(delay: Long? = null) {
-        stopActivityPolling()
-        synchronized(this) {
-            lastEventTime = System.currentTimeMillis()
-            if (pollingTimer == null) {
-                pollingTimer = Timer()
-                pollingTimer?.schedule(object : TimerTask() {
-                    override fun run() {
-                        val interval = System.currentTimeMillis() - lastEventTime
-                        if (interval <= pollingTimeout) {
-                            modernModeEvent()
-                        } else {
-                            stopActivityPolling()
-                        }
-                    }
-                }, delay ?: pollingInterval, pollingInterval)
-            }
-        }
-    }
-
-    // 停止活动轮询
-    private fun stopActivityPolling() {
-        synchronized(this) {
-            if (pollingTimer != null) {
-                pollingTimer?.cancel()
-                pollingTimer?.purge()
-                pollingTimer = null
             }
         }
     }
 
     private fun updateFloatingWindow(debugInfo: String) {
-        if (floatingView != null) {
-            handler!!.post {
+        floatingView?.let { view ->
+            mainHandler.post {
                 try {
-                    val textView = floatingView!!.findViewById<TextView>(R.id.debug_info)
-                    if (textView != null) {
-                        textView.text = debugInfo
-                    }
+                    view.findViewById<TextView>(R.id.debug_info)?.text = debugInfo
                 } catch (e: Exception) {
-                    logError("Error updating floating window text: " + e.message, "E")
+                    Logger.e(TAG, "更新悬浮窗失败: ${e.message}")
                 }
             }
         }
@@ -755,129 +719,121 @@ class MyAccessibilityService : AccessibilityService() {
     private fun showNotification() {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val channel =
-                    NotificationChannel(
-                        CHANNEL_ID, "CS Controller Service", NotificationManager.IMPORTANCE_LOW
-                    )
-                notificationManager!!.createNotificationChannel(channel)
+                val channel = NotificationChannel(
+                    CHANNEL_ID,
+                    "CS Controller Service",
+                    NotificationManager.IMPORTANCE_LOW
+                )
+                notificationManager?.createNotificationChannel(channel)
             }
 
-            val notification =
-                Notification.Builder(this, CHANNEL_ID)
-                    .setContentTitle("CS Controller 正在运行")
-                    .setSmallIcon(R.drawable.ic_notification)
-                    .setOngoing(true)
-                    .build()
+            val notification = Notification.Builder(this, CHANNEL_ID)
+                .setContentTitle("CS Controller 正在运行")
+                .setSmallIcon(R.drawable.ic_notification)
+                .setOngoing(true)
+                .build()
 
             startForeground(NOTIFICATION_ID, notification)
         } catch (e: Exception) {
-            logError("Error showing notification: " + e.message, "E")
+            Logger.e(TAG, "显示通知失败: ${e.message}")
         }
     }
 
-    private fun checkOverlayPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Settings.canDrawOverlays(this)) {
+    private fun checkOverlayPermissionAsync() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            serviceScope.launch {
                 try {
-                    Toast.makeText(this, "请开启悬浮窗权限", Toast.LENGTH_SHORT).show()
-                    val intent =
-                        Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:$packageName")
-                        )
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    Toast.makeText(this@MyAccessibilityService, "请开启悬浮窗权限", Toast.LENGTH_SHORT).show()
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")
+                    ).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
                     startActivity(intent)
                 } catch (e: Exception) {
-                    logError("Error requesting overlay permission: " + e.message, "E")
+                    Logger.e(TAG, "请求悬浮窗权限失败: ${e.message}")
                 }
             }
         }
     }
 
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        super.onStartCommand(intent, flags, startId)
-
-        // 如果服务还没初始化，尝试初始化
-        if (!isServiceInitialized) {
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!isServiceInitialized.get()) {
             initializeService()
         }
-
         return START_STICKY
     }
 
-    override fun onTaskRemoved(rootIntent: Intent) {
+    override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        try {
-            // 在应用被从最近任务列表移除时重启服务
-            val restartServiceIntent = Intent(applicationContext, this.javaClass)
-            restartServiceIntent.setPackage(packageName)
-            startService(restartServiceIntent)
-        } catch (e: Exception) {
-            logError("Error restarting service: " + e.message, "E")
-        }
+        restartService()
     }
 
     override fun onInterrupt() {
-        Log.w(TAG, "Service interrupted")
-        // 服务中断时的处理
-        handler!!.postDelayed({ this.initializeService() }, 3000)
+        Log.w(TAG, "服务中断")
+        serviceScope.launch {
+            delay(3000)
+            if (!isServiceInitialized.get()) {
+                initializeService()
+            }
+        }
     }
 
     override fun onDestroy() {
-        Log.d(TAG, "Service being destroyed")
+        Log.d(TAG, "服务销毁")
         cleanup()
-
-        // 尝试重启服务
-        try {
-            val restartServiceIntent = Intent(applicationContext, this.javaClass)
-            restartServiceIntent.setPackage(packageName)
-            startService(restartServiceIntent)
-        } catch (e: Exception) {
-            logError("Failed to restart service: " + e.message, "E")
-        }
-
+        restartService()
         super.onDestroy()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        serviceIsConnected = false
+        serviceIsConnected.set(false)
         cleanup()
         stopSelf()
         return super.onUnbind(intent)
     }
 
-    private fun cleanup() {
+    private fun restartService() {
         try {
-            isServiceInitialized = false
-
-            if (floatingView != null) {
-                windowManager!!.removeView(floatingView)
-                floatingView = null
+            val restartIntent = Intent(applicationContext, this.javaClass).apply {
+                setPackage(packageName)
             }
-
-            if (configObserver != null) {
-                configObserver!!.stopWatching()
-                configObserver = null
-            }
-
-            notificationManager!!.cancel(NOTIFICATION_ID)
-
-            // 清理其他资源
-            appModeMap.clear()
-            cachedDesktopApps.clear()
-            launcherPackages.clear()
-            inputMethods.clear()
-            windowIdCaches.evictAll()
-            stopActivityPolling()
-
-            Log.d(TAG, "Service cleanup completed")
+            startService(restartIntent)
         } catch (e: Exception) {
-            logError("Error during cleanup: " + e.message, "E")
+            Logger.e(TAG, "重启服务失败: ${e.message}")
         }
     }
 
-    @Suppress("SameParameterValue")
-    private fun logError(message: String, level: String) {
-        Logger.writeLog(TAG, level, message)
+    private fun cleanup() {
+        try {
+            isServiceInitialized.set(false)
+            serviceIsConnected.set(false)
+
+            // 取消所有协程
+            serviceScope.cancel()
+            backgroundScope.cancel()
+            pollingJob?.cancel()
+
+            // 清理UI组件
+            removeFloatingWindow()
+
+            // 停止文件观察器
+            configObserver?.stopWatching()
+            configObserver = null
+
+            // 取消通知
+            notificationManager?.cancel(NOTIFICATION_ID)
+
+            // 清理缓存和集合
+            windowIdCaches.evictAll()
+            synchronized(launcherPackages) { launcherPackages.clear() }
+            synchronized(inputMethods) { inputMethods.clear() }
+            appModeMap.clear()
+
+            Log.d(TAG, "服务清理完成")
+        } catch (e: Exception) {
+            Logger.e(TAG, "服务清理失败: ${e.message}")
+        }
     }
 }
